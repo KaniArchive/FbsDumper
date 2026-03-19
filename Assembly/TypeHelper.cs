@@ -26,7 +26,8 @@ internal static class TypeHelper
         ["System.Byte"] = "uint8"
     };
 
-    public static readonly InstructionsParser InstructionsResolver = new(Parser.GameAssemblyPath);
+    private static InstructionsParser? _instructionsResolver;
+    private static InstructionsParser InstructionsResolver => _instructionsResolver ??= new InstructionsParser(Parser.GameAssemblyPath);
 
     public static string SystemToStringType(TypeDefinition field)
     {
