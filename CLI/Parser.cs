@@ -13,26 +13,28 @@ public static class Parser
     public static string GameAssemblyPath = "libil2cpp.so";
     public static string? NameSpace2LookFor;
     private static readonly string FlatBaseType = "FlatBuffers.IFlatbufferObject";
-    public static FlatBuilder FlatBufferBuilder = null!;
+    public static FlatBuilder? FlatBufferBuilder;
     public static readonly List<TypeDefinition> FlatEnumsToAdd = [];
     public static bool SuppressWarnings;
     public static bool NoAsmProcessing;
     public static bool Force;
+    public static bool SkipDuplicates;
 
     public static void Execute(string dummyDll, string gameAssembly, string outputFile, string nameSpace,
-        bool forceSnakeCase, string? namespaceToLookFor, bool split, EnumOut enumOut, bool force, bool verbose,
-        bool suppressWarnings)
+        bool forceSnakeCase, string? namespaceToLookFor, bool split, EnumOut enumOut, bool force, bool skipDuplicates,
+        bool verbose, bool suppressWarnings)
     {
         if (verbose) Log.EnableDebugLogging();
 
         SuppressWarnings = suppressWarnings;
         Force = force;
+        SkipDuplicates = skipDuplicates;
 
         _dummyAssemblyDir = dummyDll;
         GameAssemblyPath = gameAssembly;
         NameSpace2LookFor = namespaceToLookFor;
 
-        var customNamespace = split ? (nameSpace == "FlatData" ? null : nameSpace) : nameSpace;
+        var customNamespace = split ? nameSpace == "FlatData" ? null : nameSpace : nameSpace;
 
         if (!Directory.Exists(_dummyAssemblyDir))
         {

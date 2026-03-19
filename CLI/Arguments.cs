@@ -16,6 +16,7 @@ public static class Args
     /// <param name="split">-sp, Split output into one .fbs file per IL namespace, organized in the output directory.</param>
     /// <param name="enumOut">-eo, How to handle enums: Inline (default), Separate (single enums.fbs), Omit (skip enums).</param>
     /// <param name="force">-f, Force processing using Add methods when no Create method exists.</param>
+    /// <param name="skipDuplicates">-sd, Skip types with duplicate short names (keeps only the first occurrence). By default all types are kept and a warning is shown.</param>
     /// <param name="verbose">-v, Enable verbose debug logging.</param>
     /// <param name="suppressWarnings">-sw, Suppress warning messages.</param>
     public static void Run(
@@ -28,10 +29,11 @@ public static class Args
         bool split = false,
         EnumOut enumOut = EnumOut.Inline,
         bool force = false,
+        bool skipDuplicates = false,
         bool verbose = false,
         bool suppressWarnings = false)
     {
-        Parser.Execute(dummyDll, gameAssembly, outputFile, @namespace, forceSnakeCase, namespaceToLookFor, split, enumOut, force, verbose,
+        Parser.Execute(dummyDll, gameAssembly, outputFile, @namespace, forceSnakeCase, namespaceToLookFor, split, enumOut, force, skipDuplicates, verbose,
             suppressWarnings);
     }
 }

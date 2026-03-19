@@ -11,44 +11,44 @@ public static class Log
     private static ILogger? _logger;
     private static bool _isInitialized;
 
-    public static ILogger Global
+    public static ILogger? Global
     {
         get
         {
             EnsureInitialized();
-            return _logger!;
+            return _logger;
         }
     }
 
     public static void Info(string message)
     {
         EnsureInitialized();
-        _logger!.ZLogInformation($"{message}");
+        _logger?.ZLogInformation($"{message}");
     }
 
     public static void Error(string message)
     {
         EnsureInitialized();
-        _logger!.ZLogError($"{message}");
+        _logger?.ZLogError($"{message}");
     }
 
     public static void Error(string message, Exception exception)
     {
         EnsureInitialized();
-        _logger!.ZLogError(exception, $"{message}");
+        _logger?.ZLogError(exception, $"{message}");
     }
 
     public static void Warning(string message)
     {
         if (Parser.SuppressWarnings) return;
         EnsureInitialized();
-        _logger!.ZLogWarning($"{message}");
+        _logger?.ZLogWarning($"{message}");
     }
 
     public static void Debug(string message)
     {
         EnsureInitialized();
-        _logger!.ZLogDebug($"{message}");
+        _logger?.ZLogDebug($"{message}");
     }
 
     public static void EnableDebugLogging()
@@ -84,7 +84,7 @@ public static class Log
                 options.UsePlainTextFormatter(formatter =>
                 {
                     formatter.SetPrefixFormatter($"{0} {1} ",
-                        (in MessageTemplate template, in LogInfo info) =>
+                        (in template, in info) =>
                         {
                             var timestamp = Chalk.Gray + info.Timestamp.Local.ToString("HH:mm:ss");
                             var logLevel = GetColoredLogLevel(info.LogLevel);
@@ -99,36 +99,39 @@ public static class Log
         _isInitialized = true;
     }
 
-    private static string GetColoredLogLevel(LogLevel logLevel) => logLevel switch
+    private static string GetColoredLogLevel(LogLevel logLevel)
     {
-        LogLevel.Trace => Chalk.Magenta + "[TRC]",
-        LogLevel.Debug => Chalk.Cyan + "[DBG]",
-        LogLevel.Information => Chalk.Blue + "[INF]",
-        LogLevel.Warning => Chalk.Yellow + "[WRN]",
-        LogLevel.Error => Chalk.Red + "[ERR]",
-        LogLevel.Critical => Chalk.BgRed.White + "[CRT]",
-        _ => Chalk.White + "[???]"
-    };
+        return logLevel switch
+        {
+            LogLevel.Trace => Chalk.Magenta + "[TRC]",
+            LogLevel.Debug => Chalk.Cyan + "[DBG]",
+            LogLevel.Information => Chalk.Blue + "[INF]",
+            LogLevel.Warning => Chalk.Yellow + "[WRN]",
+            LogLevel.Error => Chalk.Red + "[ERR]",
+            LogLevel.Critical => Chalk.BgRed.White + "[CRT]",
+            _ => Chalk.White + "[???]"
+        };
+    }
 }
 
 public static partial class LogMessages
 {
     [ZLoggerMessage(LogLevel.Information, "Disassembling types ({current}/{total})...")]
-    public static partial void LogProgress(this ILogger logger, int current, int total);
+    public static partial void LogProgress(this ILogger? logger, int current, int total);
 
     [ZLoggerMessage(LogLevel.Error, "Dummy assembly directory '{path}' not found.")]
-    public static partial void LogDummyDirNotFound(this ILogger logger, string path);
+    public static partial void LogDummyDirNotFound(this ILogger? logger, string path);
 
     [ZLoggerMessage(LogLevel.Error, "libil2cpp.so path '{path}' not found.")]
-    public static partial void LogGameAssemblyNotFound(this ILogger logger, string path);
+    public static partial void LogGameAssemblyNotFound(this ILogger? logger, string path);
 
     [ZLoggerMessage(LogLevel.Error, "{fileName} not found in '{directory}'.")]
-    public static partial void LogFileNotFound(this ILogger logger, string fileName, string directory);
+    public static partial void LogFileNotFound(this ILogger? logger, string fileName, string directory);
 
     [ZLoggerMessage(LogLevel.Warning, "unknown system type {typeName}")]
     private static partial void LogUnknownSystemTypeInternal(this ILogger logger, string typeName);
 
-    public static void LogUnknownSystemType(this ILogger logger, string typeName)
+    public static void LogUnknownSystemType(this ILogger? logger, string typeName)
     {
         if (!Parser.SuppressWarnings) logger.LogUnknownSystemTypeInternal(typeName);
     }

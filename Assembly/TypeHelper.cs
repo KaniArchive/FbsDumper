@@ -26,6 +26,8 @@ internal static class TypeHelper
         ["System.Byte"] = "uint8"
     };
 
+    public static readonly InstructionsParser InstructionsResolver = new(Parser.GameAssemblyPath);
+
     public static string SystemToStringType(TypeDefinition field)
     {
         var fullName = field.FullName;
@@ -36,8 +38,6 @@ internal static class TypeHelper
 
         return name;
     }
-
-    public static readonly InstructionsParser InstructionsResolver = new(Parser.GameAssemblyPath);
 
     public static ITypeParser GetTypeParser(Architecture architecture)
     {
@@ -73,8 +73,14 @@ internal static class TypeHelper
         if (!string.IsNullOrEmpty(Parser.NameSpace2LookFor))
             ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == Parser.NameSpace2LookFor).ToArray()];
 
-        // Dedupe
-        ret = [..ret.AsValueEnumerable().DistinctBy(t => t.Name).ToArray()];
+        var byName = ret.AsValueEnumerable().GroupBy(t => t.Name).ToArray();
+
+        if (Parser.SkipDuplicates)
+            return [.. byName.AsValueEnumerable().Select(g => g.First()).ToArray()];
+
+        foreach (var g in byName.AsValueEnumerable().Where(g => g.Count() > 1))
+            Log.Warning(
+                $"Duplicate type name '{g.Key}' found in multiple namespaces. Use --split to resolve naming conflicts.");
 
         return ret;
     }

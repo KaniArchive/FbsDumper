@@ -2,7 +2,6 @@ using System.Buffers;
 using System.Text.RegularExpressions;
 using FbsDumper.Assembly;
 using FbsDumper.Helpers;
-using Mono.Cecil;
 using Utf8StringInterpolation;
 using ZLinq;
 
@@ -19,13 +18,11 @@ public static partial class FileGeneratorService
         stringWriter.Flush();
         File.WriteAllBytes(outputFile, buffer.ToArray());
 
-        if (enumOut == EnumOut.Separate && schema.FlatEnums.Count > 0)
-        {
-            var enumsFile = Path.Combine(
-                Path.GetDirectoryName(outputFile) ?? ".",
-                Path.GetFileNameWithoutExtension(outputFile) + ".enums.fbs");
-            WriteEnumsFile(schema.FlatEnums, enumsFile, customNamespace);
-        }
+        if (enumOut != EnumOut.Separate || schema.FlatEnums.Count <= 0) return;
+        var enumsFile = Path.Combine(
+            Path.GetDirectoryName(outputFile) ?? ".",
+            Path.GetFileNameWithoutExtension(outputFile) + ".enums.fbs");
+        WriteEnumsFile(schema.FlatEnums, enumsFile, customNamespace);
     }
 
     public static void WriteSplitFiles(FlatSchema schema, string outputDir, string? customNamespace,
@@ -62,12 +59,10 @@ public static partial class FileGeneratorService
             Log.Info($"Written: {fileName}");
         }
 
-        if (enumOut == EnumOut.Separate && schema.FlatEnums.Count > 0)
-        {
-            var enumsPath = Path.Combine(outputDir, "enums.fbs");
-            WriteEnumsFile(schema.FlatEnums, enumsPath, customNamespace);
-            Log.Info("Written: enums.fbs");
-        }
+        if (enumOut != EnumOut.Separate || schema.FlatEnums.Count <= 0) return;
+        var enumsPath = Path.Combine(outputDir, "enums.fbs");
+        WriteEnumsFile(schema.FlatEnums, enumsPath, customNamespace);
+        Log.Info("Written: enums.fbs");
     }
 
     private static void WriteEnumsFile(List<FlatEnum> enums, string filePath, string? customNamespace)
@@ -80,6 +75,7 @@ public static partial class FileGeneratorService
             WriteTableEnum(ref stringWriter, flatEnum);
             stringWriter.AppendLine();
         }
+
         stringWriter.Flush();
         File.WriteAllBytes(filePath, buffer.ToArray());
     }
