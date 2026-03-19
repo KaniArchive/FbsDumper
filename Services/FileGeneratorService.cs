@@ -14,7 +14,7 @@ public static partial class FileGeneratorService
     {
         using var buffer = Utf8String.CreateWriter(out var stringWriter);
         WriteSchemaContent(ref stringWriter, schema.FlatTables, enumOut == EnumOut.Inline ? schema.FlatEnums : [],
-            customNamespace, forceSnakeCase);
+            customNamespace, forceSnakeCase, []);
         stringWriter.Flush();
         File.WriteAllBytes(outputFile, buffer.ToArray());
 
@@ -36,8 +36,11 @@ public static partial class FileGeneratorService
             .GroupBy(t => t.OriginalNamespace)
             .ToArray();
 
+        var schemaNamespaces = new HashSet<string>(schema.FlatTables.AsValueEnumerable().Select(t => t.OriginalNamespace));
+
         foreach (var group in tablesByNamespace)
         {
+            var tables = group.ToList();
             var originalNamespace = group.Key;
             var finalNamespace = BuildFinalNamespace(originalNamespace, customNamespace);
             var fileName = string.IsNullOrEmpty(finalNamespace)
@@ -51,8 +54,11 @@ public static partial class FileGeneratorService
                     .ToArray()
                 : [];
 
+            var includes = BuildIncludes(tables, originalNamespace, customNamespace, schemaNamespaces, enumOut,
+                schema.FlatEnums.Count > 0);
+
             using var buffer = Utf8String.CreateWriter(out var stringWriter);
-            WriteSchemaContent(ref stringWriter, [.. group], inlineEnums.ToList(), finalNamespace, forceSnakeCase);
+            WriteSchemaContent(ref stringWriter, tables, inlineEnums.ToList(), finalNamespace, forceSnakeCase, includes);
             stringWriter.Flush();
             File.WriteAllBytes(filePath, buffer.ToArray());
 
@@ -63,6 +69,37 @@ public static partial class FileGeneratorService
         var enumsPath = Path.Combine(outputDir, "enums.fbs");
         WriteEnumsFile(schema.FlatEnums, enumsPath, customNamespace);
         Log.Info("Written: enums.fbs");
+    }
+
+    private static List<string> BuildIncludes(List<FlatTable> tables, string currentNamespace, string? customNamespace,
+        HashSet<string> schemaNamespaces, EnumOut enumOut, bool hasEnums)
+    {
+        var includes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (enumOut == EnumOut.Separate && hasEnums)
+            includes.Add("enums.fbs");
+
+        foreach (var table in tables)
+        {
+            foreach (var field in table.Fields)
+            {
+                var dependencyNamespace = field.Type.Namespace;
+                if (string.IsNullOrEmpty(dependencyNamespace) || dependencyNamespace == currentNamespace)
+                    continue;
+
+                if (!schemaNamespaces.Contains(dependencyNamespace))
+                    continue;
+
+                var dependencyFinalNamespace = BuildFinalNamespace(dependencyNamespace, customNamespace);
+                var dependencyFileName = string.IsNullOrEmpty(dependencyFinalNamespace)
+                    ? "tables.fbs"
+                    : $"{dependencyFinalNamespace}.fbs";
+
+                includes.Add(dependencyFileName);
+            }
+        }
+
+        return [.. includes.AsValueEnumerable().OrderBy(x => x)];
     }
 
     private static void WriteEnumsFile(List<FlatEnum> enums, string filePath, string? customNamespace)
@@ -85,9 +122,16 @@ public static partial class FileGeneratorService
         List<FlatTable> tables,
         IEnumerable<FlatEnum> enums,
         string? namespaceName,
-        bool forceSnakeCase)
+        bool forceSnakeCase,
+        List<string> includes)
         where TBufferWriter : IBufferWriter<byte>
     {
+        foreach (var include in includes)
+            writer.AppendFormat($"include \"{include}\";\n");
+
+        if (includes.Count > 0)
+            writer.AppendLine();
+
         if (!string.IsNullOrEmpty(namespaceName))
             writer.AppendFormat($"namespace {namespaceName};\n\n");
 
