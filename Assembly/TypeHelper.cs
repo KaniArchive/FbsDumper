@@ -11,6 +11,32 @@ namespace FbsDumper.Assembly;
 
 internal static class TypeHelper
 {
+    private static readonly Dictionary<string, string> TypeMap = new()
+    {
+        ["System.String"] = "string",
+        ["System.Int16"] = "short",
+        ["System.UInt16"] = "ushort",
+        ["System.Int32"] = "int",
+        ["System.UInt32"] = "uint",
+        ["System.Int64"] = "long",
+        ["System.UInt64"] = "ulong",
+        ["System.Boolean"] = "bool",
+        ["System.Single"] = "float",
+        ["System.SByte"] = "int8",
+        ["System.Byte"] = "uint8"
+    };
+
+    public static string SystemToStringType(TypeDefinition field)
+    {
+        var fullName = field.FullName;
+        if (TypeMap.TryGetValue(fullName, out var type)) return type;
+
+        var name = field.Name;
+        if (name.StartsWith("System.")) Log.Global.LogUnknownSystemType(name);
+
+        return name;
+    }
+
     public static readonly InstructionsParser InstructionsResolver = new(Parser.GameAssemblyPath);
 
     public static ITypeParser GetTypeParser(Architecture architecture)
@@ -56,7 +82,7 @@ internal static class TypeHelper
     public static FlatTable TypeToTable(ITypeParser typeParser, TypeDefinition targetType)
     {
         var typeName = targetType.Name;
-        var ret = new FlatTable(typeName);
+        var ret = new FlatTable(typeName, targetType.Namespace);
 
         var createMethod = targetType.Methods.FirstOrDefault(m =>
             m.Name == $"Create{typeName}" &&
@@ -99,7 +125,7 @@ internal static class TypeHelper
     public static FlatEnum TypeToEnum(TypeDefinition typeDef)
     {
         var retType = typeDef.GetEnumUnderlyingType().Resolve();
-        var ret = new FlatEnum(retType, typeDef.Name);
+        var ret = new FlatEnum(retType, typeDef.Name, typeDef.Namespace);
 
         foreach (var fieldDef in typeDef.Fields.AsValueEnumerable().Where(f => f.HasConstant))
         {
@@ -139,9 +165,4 @@ internal static class TypeHelper
         var endMethod = targetType.Methods.First(m => m.Name == $"End{targetType.Name}");
         return InstructionsParser.GetMethodRva(endMethod);
     }
-}
-
-internal interface ITypeParser
-{
-    void ProcessFields(ref FlatTable ret, MethodDefinition createMethod, TypeDefinition targetType);
 }

@@ -20,49 +20,6 @@ public static class Log
         }
     }
 
-    private static void EnsureInitialized()
-    {
-        if (_isInitialized) return;
-
-        _loggerFactory = LoggerFactory.Create(logging =>
-        {
-            logging.ClearProviders();
-            logging.SetMinimumLevel(LogLevel.Information);
-
-            logging.AddZLoggerConsole(options =>
-            {
-                options.UsePlainTextFormatter(formatter =>
-                {
-                    formatter.SetPrefixFormatter($"{0} {1} ",
-                        (in MessageTemplate template, in LogInfo info) =>
-                        {
-                            var timestamp = Chalk.Gray + info.Timestamp.Local.ToString("HH:mm:ss");
-                            var logLevel = GetColoredLogLevel(info.LogLevel);
-                            template.Format(timestamp, logLevel);
-                        });
-                });
-                options.LogToStandardErrorThreshold = LogLevel.Error;
-            });
-        });
-
-        _logger = _loggerFactory.CreateLogger("FbsDumper");
-        _isInitialized = true;
-    }
-
-    private static string GetColoredLogLevel(LogLevel logLevel)
-    {
-        return logLevel switch
-        {
-            LogLevel.Trace => Chalk.Magenta + "[TRC]",
-            LogLevel.Debug => Chalk.Cyan + "[DBG]",
-            LogLevel.Information => Chalk.Blue + "[INF]",
-            LogLevel.Warning => Chalk.Yellow + "[WRN]",
-            LogLevel.Error => Chalk.Red + "[ERR]",
-            LogLevel.Critical => Chalk.BgRed.White + "[CRT]",
-            _ => Chalk.White + "[???]"
-        };
-    }
-
     public static void Info(string message)
     {
         EnsureInitialized();
@@ -84,7 +41,6 @@ public static class Log
     public static void Warning(string message)
     {
         if (Parser.SuppressWarnings) return;
-
         EnsureInitialized();
         _logger!.ZLogWarning($"{message}");
     }
@@ -98,11 +54,30 @@ public static class Log
     public static void EnableDebugLogging()
     {
         if (_isInitialized) Shutdown();
+        Initialize(LogLevel.Debug);
+    }
 
+    public static void Shutdown()
+    {
+        if (!_isInitialized) return;
+        _loggerFactory?.Dispose();
+        _loggerFactory = null;
+        _logger = null;
+        _isInitialized = false;
+    }
+
+    private static void EnsureInitialized()
+    {
+        if (_isInitialized) return;
+        Initialize(LogLevel.Information);
+    }
+
+    private static void Initialize(LogLevel minimumLevel)
+    {
         _loggerFactory = LoggerFactory.Create(logging =>
         {
             logging.ClearProviders();
-            logging.SetMinimumLevel(LogLevel.Debug);
+            logging.SetMinimumLevel(minimumLevel);
 
             logging.AddZLoggerConsole(options =>
             {
@@ -124,14 +99,16 @@ public static class Log
         _isInitialized = true;
     }
 
-    public static void Shutdown()
+    private static string GetColoredLogLevel(LogLevel logLevel) => logLevel switch
     {
-        if (!_isInitialized) return;
-        _loggerFactory?.Dispose();
-        _loggerFactory = null;
-        _logger = null;
-        _isInitialized = false;
-    }
+        LogLevel.Trace => Chalk.Magenta + "[TRC]",
+        LogLevel.Debug => Chalk.Cyan + "[DBG]",
+        LogLevel.Information => Chalk.Blue + "[INF]",
+        LogLevel.Warning => Chalk.Yellow + "[WRN]",
+        LogLevel.Error => Chalk.Red + "[ERR]",
+        LogLevel.Critical => Chalk.BgRed.White + "[CRT]",
+        _ => Chalk.White + "[???]"
+    };
 }
 
 public static partial class LogMessages
