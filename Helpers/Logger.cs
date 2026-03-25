@@ -133,17 +133,22 @@ public static partial class LogMessages
 
     public static void LogUnknownSystemType(this ILogger? logger, string typeName)
     {
-        if (!Parser.SuppressWarnings) logger.LogUnknownSystemTypeInternal(typeName);
+        if (!Parser.SuppressWarnings) logger?.LogUnknownSystemTypeInternal(typeName);
     }
 
     [ZLoggerMessage(LogLevel.Debug, "\t0x{address:X}: {mnemonic} {operand}")]
-    public static partial void LogInstruction(this ILogger logger, ulong address, string mnemonic, string? operand);
+    private static partial void LogInstructionInternal(this ILogger logger, ulong address, string mnemonic, string? operand);
+
+    public static void LogInstruction(this ILogger? logger, ulong address, string mnemonic, string? operand)
+    {
+        logger?.LogInstructionInternal(address, mnemonic, operand);
+    }
 
     [ZLoggerMessage(LogLevel.Warning, "Skipping call for 0x{address:X} because {reason}")]
     private static partial void LogSkippingCallInternal(this ILogger logger, ulong address, string reason);
 
-    public static void LogSkippingCall(this ILogger logger, ulong address, string reason)
+    public static void LogSkippingCall(this ILogger? logger, ulong address, string reason)
     {
-        if (!Parser.SuppressWarnings) logger.LogSkippingCallInternal(address, reason);
+        if (!Parser.SuppressWarnings) logger?.LogSkippingCallInternal(address, reason);
     }
 }
