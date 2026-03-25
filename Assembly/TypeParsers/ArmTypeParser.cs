@@ -121,8 +121,8 @@ internal class ArmTypeParser : ITypeParser
         {
             if (string.IsNullOrEmpty(m.Target)) return false;
 
-                    return TypeHelper.TryParseTarget(m.Target, out var target) &&
-                           Parser.FlatBufferBuilder!.Methods.ContainsKey(target);
+                return TypeHelper.TryParseTarget(m.Target, out var target) &&
+                        Parser.FlatBufferBuilder!.Methods.ContainsKey(target);
         });
 
         var cnt = ParseArgument(call, "w1");

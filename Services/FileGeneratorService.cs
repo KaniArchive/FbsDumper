@@ -83,17 +83,16 @@ public static partial class FileGeneratorService
         {
             foreach (var field in table.Fields)
             {
-                var dependencyNamespace = field.Type.Namespace;
-                if (string.IsNullOrEmpty(dependencyNamespace) || dependencyNamespace == currentNamespace)
+                var dependencyNamespace = field.Type.Namespace ?? string.Empty;
+                if (dependencyNamespace == currentNamespace)
                     continue;
 
                 if (!schemaNamespaces.Contains(dependencyNamespace))
                     continue;
 
-                var dependencyFinalNamespace = BuildFinalNamespace(dependencyNamespace, customNamespace);
-                var dependencyFileName = string.IsNullOrEmpty(dependencyFinalNamespace)
+                var dependencyFileName = string.IsNullOrEmpty(dependencyNamespace)
                     ? "tables.fbs"
-                    : $"{dependencyFinalNamespace}.fbs";
+                    : $"{BuildFinalNamespace(dependencyNamespace, customNamespace)}.fbs";
 
                 includes.Add(dependencyFileName);
             }
