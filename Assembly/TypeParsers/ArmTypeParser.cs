@@ -74,7 +74,7 @@ internal class ArmTypeParser : ITypeParser
 
             switch (target)
             {
-                case var _ when target == Parser.FlatBufferBuilder.StartObject:
+                case var _ when target == Parser.FlatBufferBuilder!.StartObject:
                     hasStarted = true;
 
                     var cnt = ParseArgument(call, "w1");
@@ -84,23 +84,23 @@ internal class ArmTypeParser : ITypeParser
                     Log.Debug($"Has started, instance will have {cnt} fields");
                     break;
 
-                case var _ when target == Parser.FlatBufferBuilder.EndObject:
+                case var _ when target == Parser.FlatBufferBuilder!.EndObject:
                 case var _ when target == endMethodRva:
                     return ret;
 
                 default:
                     if (!hasStarted)
-                        Log.Global.LogSkippingCall((ulong)target, "StartObject hasn't been called yet");
+                        Log.Global?.LogSkippingCall((ulong)target, "StartObject hasn't been called yet");
 
                     if (!typeMethods.TryGetValue(target, out var method))
                     {
-                        Log.Global.LogSkippingCall((ulong)target, $"it's not part of the {targetType.FullName}");
+                        Log.Global?.LogSkippingCall((ulong)target, $"it's not part of the {targetType.FullName}");
                         continue;
                     }
 
                     if (cur >= max)
                     {
-                        Log.Global.LogSkippingCall((ulong)target, "max amount of fields has been reached");
+                        Log.Global?.LogSkippingCall((ulong)target, "max amount of fields has been reached");
                         continue;
                     }
 
@@ -116,15 +116,13 @@ internal class ArmTypeParser : ITypeParser
 
     private static int ParseCallsForAddMethod(MethodDefinition createMethod)
     {
-        var instructions = TypeHelper.InstructionsResolver.GetInstructions(createMethod);
-        var analyzer = InstructionsAnalyzer.GetAnalyzer(TypeHelper.InstructionsResolver.Architecture);
-        var calls = analyzer.AnalyzeCalls(instructions);
+        var calls = TypeHelper.GetAnalyzedCalls(createMethod);
         var call = calls.First(m =>
         {
             if (string.IsNullOrEmpty(m.Target)) return false;
 
-            return TypeHelper.TryParseTarget(m.Target, out var target) &&
-                   Parser.FlatBufferBuilder.Methods.ContainsKey(target);
+                    return TypeHelper.TryParseTarget(m.Target, out var target) &&
+                           Parser.FlatBufferBuilder!.Methods.ContainsKey(target);
         });
 
         var cnt = ParseArgument(call, "w1");

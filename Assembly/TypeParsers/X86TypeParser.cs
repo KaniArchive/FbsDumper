@@ -89,33 +89,33 @@ internal class X86TypeParser : ITypeParser
 
             switch (target)
             {
-                case var _ when target == Parser.FlatBufferBuilder.StartObject:
+                case var _ when target == Parser.FlatBufferBuilder!.StartObject:
                     hasStarted = true;
                     max = ParseEdxValue(call);
 
                     Log.Debug($"Has started, instance will have {max} fields");
                     break;
 
-                case var _ when target == Parser.FlatBufferBuilder.EndObject:
+                case var _ when target == Parser.FlatBufferBuilder!.EndObject:
                 case var _ when target == endMethodRva:
                     return ret;
 
                 default:
                     if (!hasStarted)
                     {
-                        Log.Global.LogSkippingCall((ulong)target, "StartObject hasn't been called yet");
+                        Log.Global?.LogSkippingCall((ulong)target, "StartObject hasn't been called yet");
                         continue;
                     }
 
                     if (!typeMethods.TryGetValue(target, out _))
                     {
-                        Log.Global.LogSkippingCall((ulong)target, $"it's not part of the {targetType.FullName}");
+                        Log.Global?.LogSkippingCall((ulong)target, $"it's not part of the {targetType.FullName}");
                         continue;
                     }
 
                     if (cur >= max)
                     {
-                        Log.Global.LogSkippingCall((ulong)target, "max amount of fields has been reached");
+                        Log.Global?.LogSkippingCall((ulong)target, "max amount of fields has been reached");
                         continue;
                     }
 
