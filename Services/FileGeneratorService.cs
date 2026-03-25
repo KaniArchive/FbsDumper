@@ -156,7 +156,7 @@ public static partial class FileGeneratorService
         if (table.NoCreate) writer.AppendLiteral("\t// No Create method\n");
 
         foreach (var tableField in table.Fields)
-            WriteTableField(ref writer, tableField, forceSnakeCase);
+            WriteTableField(ref writer, tableField, forceSnakeCase, table.TableName);
 
         writer.AppendLiteral("}\n");
     }
@@ -178,10 +178,13 @@ public static partial class FileGeneratorService
     }
 
     private static void WriteTableField<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatField field,
-        bool forceSnakeCase)
+        bool forceSnakeCase, string tableName)
         where TBufferWriter : IBufferWriter<byte>
     {
         var fieldName = forceSnakeCase ? CamelToSnake(field.Name) : field.Name;
+        if (string.Equals(fieldName, tableName, StringComparison.OrdinalIgnoreCase))
+            fieldName += "_";
+
         var fieldType = TypeHelper.SystemToStringType(field.Type);
 
         if (field.IsArray) fieldType = $"[{fieldType}]";
