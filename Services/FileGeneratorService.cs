@@ -36,7 +36,7 @@ public static partial class FileGeneratorService
             .GroupBy(t => t.OriginalNamespace)
             .ToArray();
 
-        var schemaNamespaces = new HashSet<string>(schema.FlatTables.AsValueEnumerable().Select(t => t.OriginalNamespace));
+        var schemaNamespaces = new HashSet<string>(schema.FlatTables.AsValueEnumerable().Select(t => t.OriginalNamespace).ToArray());
 
         foreach (var group in tablesByNamespace)
         {
