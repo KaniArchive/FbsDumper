@@ -182,10 +182,11 @@ public static partial class FileGeneratorService
         where TBufferWriter : IBufferWriter<byte>
     {
         var fieldName = forceSnakeCase ? CamelToSnake(field.Name) : field.Name;
-        if (string.Equals(fieldName, tableName, StringComparison.OrdinalIgnoreCase))
-            fieldName += "_";
-
         var fieldType = TypeHelper.SystemToStringType(field.Type);
+
+        if (string.Equals(fieldName, tableName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(fieldName, fieldType, StringComparison.OrdinalIgnoreCase))
+            fieldName += "_";
 
         if (field.IsArray) fieldType = $"[{fieldType}]";
 
