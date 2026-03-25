@@ -37,6 +37,7 @@ public static partial class FileGeneratorService
             .ToArray();
 
         var schemaNamespaces = new HashSet<string>(schema.FlatTables.AsValueEnumerable().Select(t => t.OriginalNamespace).ToArray());
+        var enumTypeNames = new HashSet<string>(schema.FlatEnums.AsValueEnumerable().Select(e => e.EnumName).ToArray());
 
         foreach (var group in tablesByNamespace)
         {
@@ -55,7 +56,7 @@ public static partial class FileGeneratorService
                 : [];
 
             var includes = BuildIncludes(tables, originalNamespace, customNamespace, schemaNamespaces, enumOut,
-                schema.FlatEnums.Count > 0);
+                enumTypeNames);
 
             using var buffer = Utf8String.CreateWriter(out var stringWriter);
             WriteSchemaContent(ref stringWriter, tables, inlineEnums.ToList(), finalNamespace, forceSnakeCase, includes);
@@ -72,12 +73,17 @@ public static partial class FileGeneratorService
     }
 
     private static List<string> BuildIncludes(List<FlatTable> tables, string currentNamespace, string? customNamespace,
-        HashSet<string> schemaNamespaces, EnumOut enumOut, bool hasEnums)
+        HashSet<string> schemaNamespaces, EnumOut enumOut, HashSet<string> enumTypeNames)
     {
         var includes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        if (enumOut == EnumOut.Separate && hasEnums)
-            includes.Add("enums.fbs");
+        if (enumOut == EnumOut.Separate && enumTypeNames.Count > 0)
+        {
+            var referencesEnum = tables.Any(t =>
+                t.Fields.Any(f => enumTypeNames.Contains(f.Type.Name)));
+            if (referencesEnum)
+                includes.Add("enums.fbs");
+        }
 
         foreach (var table in tables)
         {
