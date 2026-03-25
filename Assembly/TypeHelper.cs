@@ -27,7 +27,9 @@ internal static class TypeHelper
     };
 
     private static InstructionsParser? _instructionsResolver;
-    private static InstructionsParser InstructionsResolver => _instructionsResolver ??= new InstructionsParser(Parser.GameAssemblyPath);
+
+    private static InstructionsParser InstructionsResolver =>
+        _instructionsResolver ??= new InstructionsParser(Parser.GameAssemblyPath);
 
     public static string SystemToStringType(TypeDefinition field)
     {
@@ -81,7 +83,7 @@ internal static class TypeHelper
 
         foreach (var g in byName.AsValueEnumerable().Where(g => g.Count() > 1))
             Log.Warning(
-                $"Duplicate type name '{g.Key}' found in multiple namespaces. Use --split to resolve naming conflicts.");
+                $"Duplicate type name '{g.Key}' found in multiple namespaces. Use --skip-duplicates to resolve naming conflicts.");
 
         return ret;
     }

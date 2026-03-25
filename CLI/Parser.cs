@@ -1,4 +1,5 @@
 using FbsDumper.Assembly;
+using FbsDumper.Context;
 using FbsDumper.Helpers;
 using FbsDumper.Instructions;
 using FbsDumper.Services;
@@ -112,16 +113,8 @@ public static class Parser
         foreach (var fEnum in FlatEnumsToAdd.AsValueEnumerable().Select(TypeHelper.TypeToEnum))
             schema.FlatEnums.Add(fEnum);
 
-        if (split)
-        {
-            Log.Info($"Writing split .fbs files to {outputFile}/...");
-            FileGeneratorService.WriteSplitFiles(schema, outputFile, customNamespace, enumOut, forceSnakeCase);
-        }
-        else
-        {
-            Log.Info($"Writing schema to {outputFile}...");
-            FileGeneratorService.WriteSingleFile(schema, outputFile, customNamespace, enumOut, forceSnakeCase);
-        }
+        var generation = new FileGenerationContext(outputFile, customNamespace, enumOut, forceSnakeCase, split);
+        FileGeneratorService.Write(schema, generation);
 
         Log.Info("Done.");
     }
