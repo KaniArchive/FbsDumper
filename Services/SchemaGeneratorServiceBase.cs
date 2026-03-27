@@ -59,12 +59,6 @@ public abstract partial class SchemaGeneratorServiceBase
         File.WriteAllBytes(filePath, buffer.ToArray());
     }
 
-    protected virtual bool ShouldEscapeFieldName(string fieldName, string tableName, string fieldType,
-        HashSet<string> enumTypeNames)
-    {
-        return false;
-    }
-
     protected virtual string ResolveFieldType(string fieldType, FlatField field, FlatTable table,
         FileWriteContext context, HashSet<string> enumTypeNames)
     {
@@ -162,9 +156,6 @@ public abstract partial class SchemaGeneratorServiceBase
         var fieldName = Generation.ForceSnakeCase ? CamelToSnake(field.Name) : field.Name;
         var fieldType = TypeHelper.SystemToStringType(field.Type);
         fieldType = ResolveFieldType(fieldType, field, table, context, enumTypeNames);
-
-        if (ShouldEscapeFieldName(fieldName, table.TableName, fieldType, enumTypeNames))
-            fieldName += "_";
 
         if (field.IsArray) fieldType = $"[{fieldType}]";
 

@@ -32,14 +32,6 @@ public sealed class SplitGeneratorService(FileGenerationContext generation) : Sc
         Log.Info($"Written: {Path.GetFileName(filePath)}");
     }
 
-    protected override bool ShouldEscapeFieldName(string fieldName, string tableName, string fieldType,
-        HashSet<string> enumTypeNames)
-    {
-        return string.Equals(fieldName, tableName, StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(fieldName, fieldType, StringComparison.OrdinalIgnoreCase) ||
-               enumTypeNames.Contains(fieldName);
-    }
-
     protected override string ResolveFieldType(string fieldType, FlatField field, FlatTable table,
         FileWriteContext context, HashSet<string> enumTypeNames)
     {
