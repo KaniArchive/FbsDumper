@@ -26,11 +26,15 @@ public readonly record struct SchemaLookupContext(
     private static HashSet<string> BuildSet(IEnumerable<string> values) =>
         new(values, StringComparer.OrdinalIgnoreCase);
 
-    private static HashSet<string> BuildDuplicateSet(IEnumerable<string> values) =>
-        new(
-            values
-                .GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key),
-            StringComparer.OrdinalIgnoreCase);
+    private static HashSet<string> BuildDuplicateSet(IEnumerable<string> values)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var dupe = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var v in values)
+            if (!seen.Add(v))
+                dupe.Add(v);
+
+        return dupe;
+    }
 }

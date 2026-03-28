@@ -1,5 +1,6 @@
 using FbsDumper.Assembly;
 using FbsDumper.Context;
+using ZLinq;
 
 namespace FbsDumper.Services;
 
@@ -14,6 +15,7 @@ public sealed class SingleGeneratorService(FileGenerationContext generation) : S
         }
 
         var files = Blocks.Build(schema)
+            .AsValueEnumerable()
             .Select(block => CreateFile(Generation.OutputPath, block, [], true))
             .ToArray();
         var includes = BuildIncludes(schema.Schema.FlatTables, schema.Lookup);

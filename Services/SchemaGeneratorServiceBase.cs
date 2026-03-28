@@ -4,6 +4,7 @@ using FbsDumper.Assembly;
 using FbsDumper.Context;
 using FbsDumper.Helpers;
 using Utf8StringInterpolation;
+using ZLinq;
 
 namespace FbsDumper.Services;
 
@@ -87,7 +88,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
 
         var filePath = GetSeparateEnumsPath();
         IReadOnlyList<FileWriteContext> files = schema.Lookup.HasDuplicates
-            ? [.. Blocks.BuildEnums(schema).Select(block => CreateFile(filePath, block, [], false))]
+            ? [.. Blocks.BuildEnums(schema).AsValueEnumerable().Select(block => CreateFile(filePath, block, [], false))]
             :
             [
                 CreateFile(

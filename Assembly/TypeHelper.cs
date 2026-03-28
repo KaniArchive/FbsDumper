@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using FbsDumper.Assembly.TypeParsers;
 using FbsDumper.CLI;
@@ -11,22 +12,23 @@ namespace FbsDumper.Assembly;
 
 internal static class TypeHelper
 {
-    private static readonly Dictionary<string, string> TypeMap = new()
-    {
-        ["System.String"] = "string",
-        ["System.Int16"] = "short",
-        ["System.UInt16"] = "ushort",
-        ["System.Int32"] = "int",
-        ["System.UInt32"] = "uint",
-        ["System.Int64"] = "long",
-        ["System.UInt64"] = "ulong",
-        ["System.Boolean"] = "bool",
-        ["System.Single"] = "float",
-        ["System.SByte"] = "int8",
-        ["System.Byte"] = "uint8"
-    };
-
     private static InstructionsParser? _instructionsResolver;
+
+    private static FrozenDictionary<string, string> TypeMap =>
+        new Dictionary<string, string>
+        {
+            ["System.String"] = "string",
+            ["System.Int16"] = "short",
+            ["System.UInt16"] = "ushort",
+            ["System.Int32"] = "int",
+            ["System.UInt32"] = "uint",
+            ["System.Int64"] = "long",
+            ["System.UInt64"] = "ulong",
+            ["System.Boolean"] = "bool",
+            ["System.Single"] = "float",
+            ["System.SByte"] = "int8",
+            ["System.Byte"] = "uint8"
+        }.ToFrozenDictionary();
 
     private static InstructionsParser InstructionsResolver =>
         _instructionsResolver ??= new InstructionsParser(Parser.GameAssemblyPath);
