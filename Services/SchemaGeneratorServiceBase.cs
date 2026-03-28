@@ -1,5 +1,5 @@
 using System.Buffers;
-using System.Text.RegularExpressions;
+using CaseConverter;
 using FbsDumper.Assembly;
 using FbsDumper.Context;
 using FbsDumper.Helpers;
@@ -7,7 +7,7 @@ using Utf8StringInterpolation;
 
 namespace FbsDumper.Services;
 
-public abstract partial class SchemaGeneratorServiceBase(FileGenerationContext generation)
+public abstract class SchemaGeneratorServiceBase(FileGenerationContext generation)
 {
     protected FileGenerationContext Generation { get; } = generation;
     private protected SchemaBlockBuilder Blocks { get; } = new(generation);
@@ -75,14 +75,6 @@ public abstract partial class SchemaGeneratorServiceBase(FileGenerationContext g
         return string.IsNullOrEmpty(namespaceContext.FinalNamespace)
             ? "tables.fbs"
             : $"{namespaceContext.FinalNamespace}.fbs";
-    }
-
-    protected static string CamelToSnake(string camelStr)
-    {
-        var isAllUppercase = camelStr.All(char.IsUpper);
-        if (string.IsNullOrEmpty(camelStr) || isAllUppercase)
-            return camelStr;
-        return CamelToSnakeRegex().Replace(camelStr, "$1_").ToLower();
     }
 
     protected static bool ReferencesEnum(IReadOnlyList<FlatTable> tables, SchemaLookupContext lookup) =>
@@ -180,7 +172,7 @@ public abstract partial class SchemaGeneratorServiceBase(FileGenerationContext g
     private void WriteField<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FieldWriteContext field)
         where TBufferWriter : IBufferWriter<byte>
     {
-        var name = Generation.ForceSnakeCase ? CamelToSnake(field.Field.Name) : field.Field.Name;
+        var name = Generation.ForceSnakeCase ? field.Field.Name.ToSnakeCase() : field.Field.Name;
         var type = TypeHelper.SystemToStringType(field.Field.Type);
         type = ResolveFieldType(type, field);
 
@@ -188,7 +180,4 @@ public abstract partial class SchemaGeneratorServiceBase(FileGenerationContext g
 
         writer.AppendFormat($"\t{name}: {type}; // index 0x{field.Field.Offset:X}\n");
     }
-
-    [GeneratedRegex(@"(([a-z])(?=[A-Z][a-zA-Z])|([A-Z])(?=[A-Z][a-z]))")]
-    private static partial Regex CamelToSnakeRegex();
 }
