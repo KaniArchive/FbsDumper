@@ -79,4 +79,6 @@ dotnet build
 > **Disclaimer:** This software is made solely for educational purposes. I do not claim any responsibility for any usage
 > of this software.
 
-Copyright © 2025 [Hiro420](https://github.com/Hiro420)
+## License
+
+`FBSDumper` is under **GPL v3**. See [LICENSE](LICENSE) for copyright and license details.

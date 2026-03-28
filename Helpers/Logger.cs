@@ -99,9 +99,8 @@ public static class Log
         _isInitialized = true;
     }
 
-    private static string GetColoredLogLevel(LogLevel logLevel)
-    {
-        return logLevel switch
+    private static string GetColoredLogLevel(LogLevel logLevel) =>
+        logLevel switch
         {
             LogLevel.Trace => Chalk.Magenta + "[TRC]",
             LogLevel.Debug => Chalk.Cyan + "[DBG]",
@@ -111,7 +110,6 @@ public static class Log
             LogLevel.Critical => Chalk.BgRed.White + "[CRT]",
             _ => Chalk.White + "[???]"
         };
-    }
 }
 
 public static partial class LogMessages
@@ -137,12 +135,11 @@ public static partial class LogMessages
     }
 
     [ZLoggerMessage(LogLevel.Debug, "\t0x{address:X}: {mnemonic} {operand}")]
-    private static partial void LogInstructionInternal(this ILogger logger, ulong address, string mnemonic, string? operand);
+    private static partial void LogInstructionInternal(this ILogger logger, ulong address, string mnemonic,
+        string? operand);
 
-    public static void LogInstruction(this ILogger? logger, ulong address, string mnemonic, string? operand)
-    {
+    public static void LogInstruction(this ILogger? logger, ulong address, string mnemonic, string? operand) =>
         logger?.LogInstructionInternal(address, mnemonic, operand);
-    }
 
     [ZLoggerMessage(LogLevel.Warning, "Skipping call for 0x{address:X} because {reason}")]
     private static partial void LogSkippingCallInternal(this ILogger logger, ulong address, string reason);

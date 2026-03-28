@@ -20,12 +20,10 @@ internal class ArmAnalyzer : IInstructionAnalyzer
         return result;
     }
 
-    private static string[] ParseArmOperands(string? operandString)
-    {
-        return string.IsNullOrEmpty(operandString)
+    private static string[] ParseArmOperands(string? operandString) =>
+        string.IsNullOrEmpty(operandString)
             ? []
             : operandString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    }
 
     private static void ProcessArmInstruction(string mnemonic, string[] operands, InstructionWithAddress instr,
         Dictionary<string, string> regState, List<InstructionsAnalyzer.CallInfo> result)

@@ -2,25 +2,22 @@ using System.Buffers;
 using System.Text.RegularExpressions;
 using FbsDumper.Assembly;
 using FbsDumper.Context;
+using FbsDumper.Helpers;
 using Utf8StringInterpolation;
 
 namespace FbsDumper.Services;
 
-public abstract partial class SchemaGeneratorServiceBase
+public abstract partial class SchemaGeneratorServiceBase(FileGenerationContext generation)
 {
-    protected SchemaGeneratorServiceBase(FileGenerationContext generation)
-    {
-        Generation = generation;
-    }
-
-    protected FileGenerationContext Generation { get; }
+    protected FileGenerationContext Generation { get; } = generation;
+    private protected SchemaBlockBuilder Blocks { get; } = new(generation);
 
     public void Generate(FlatSchema schema)
     {
-        var context = SchemaWriteContext.Build(schema, Generation);
+        var context = SchemaWriteContext.Build(schema);
         PrepareOutput();
         GenerateCore(context);
-        WriteSeparateEnumsIfNeeded(schema);
+        WriteSeparateEnumsIfNeeded(context);
     }
 
     protected virtual void PrepareOutput()
@@ -31,39 +28,46 @@ public abstract partial class SchemaGeneratorServiceBase
 
     protected abstract string GetSeparateEnumsPath();
 
-    protected virtual void OnSeparateEnumsWritten(string filePath)
-    {
-    }
+    protected void WriteSchemaFile(FileWriteContext file, SchemaWriteContext schema) =>
+        WriteSchemaFile(file.OutputPath, [file], file.Includes, schema);
 
-    protected void WriteSchemaFile(FileWriteContext context, HashSet<string> enumTypeNames)
-    {
-        using var buffer = Utf8String.CreateWriter(out var stringWriter);
-        WriteSchemaContent(ref stringWriter, context, enumTypeNames);
-        stringWriter.Flush();
-        File.WriteAllBytes(context.OutputPath, buffer.ToArray());
-    }
-
-    protected void WriteEnumsFile(List<FlatEnum> enums, string filePath)
+    protected void WriteSchemaFile(string outputPath, IReadOnlyList<FileWriteContext> files,
+        IReadOnlyList<string> includes, SchemaWriteContext schema)
     {
         using var buffer = Utf8String.CreateWriter(out var stringWriter);
-        if (!string.IsNullOrEmpty(Generation.CustomNamespace))
-            stringWriter.AppendFormat($"namespace {Generation.CustomNamespace};\n\n");
 
-        foreach (var flatEnum in enums)
+        WriteIncludes(ref stringWriter, includes);
+
+        for (var i = 0; i < files.Count; i++)
         {
-            WriteTableEnum(ref stringWriter, flatEnum);
-            stringWriter.AppendLine();
+            if (i > 0)
+                stringWriter.AppendLine();
+
+            WriteSchema(ref stringWriter, files[i], schema);
         }
 
         stringWriter.Flush();
-        File.WriteAllBytes(filePath, buffer.ToArray());
+        File.WriteAllBytes(outputPath, buffer.ToArray());
     }
 
-    protected virtual string ResolveFieldType(string fieldType, FlatField field, FlatTable table,
-        FileWriteContext context, HashSet<string> enumTypeNames)
+    protected string ResolveFieldType(string typeName, FieldWriteContext field)
     {
-        return fieldType;
+        if (!field.File.QualifyTypes || !field.Schema.Lookup.HasType(typeName))
+            return typeName;
+
+        var typeNs = field.Field.Type.Namespace ?? string.Empty;
+        if (typeNs == field.Table.OriginalNamespace)
+            return typeName;
+
+        var ns = NamespaceContext.Build(typeNs, Generation.CustomNamespace);
+        return string.IsNullOrEmpty(ns.FinalNamespace)
+            ? typeName
+            : $"{ns.FinalNamespace}.{typeName}";
     }
+
+    private protected static FileWriteContext CreateFile(string outputPath, SchemaBlock block,
+        IReadOnlyList<string> includes, bool qualifyTypes) =>
+        new(outputPath, block.Namespace, block.Tables, block.Enums, includes, qualifyTypes);
 
     protected static string BuildSchemaFileName(string originalNamespace, string? customNamespace)
     {
@@ -81,59 +85,83 @@ public abstract partial class SchemaGeneratorServiceBase
         return CamelToSnakeRegex().Replace(camelStr, "$1_").ToLower();
     }
 
-    private void WriteSeparateEnumsIfNeeded(FlatSchema schema)
+    protected static bool ReferencesEnum(IReadOnlyList<FlatTable> tables, SchemaLookupContext lookup) =>
+        tables.Any(t => t.Fields.Any(f => lookup.EnumNames.Contains(f.Type.Name)));
+
+    private void WriteSeparateEnumsIfNeeded(SchemaWriteContext schema)
     {
-        if (Generation.EnumOut != EnumOut.Separate || schema.FlatEnums.Count <= 0)
+        if (Generation.EnumOut != EnumOut.Separate || schema.Schema.FlatEnums.Count <= 0)
             return;
 
         var filePath = GetSeparateEnumsPath();
-        WriteEnumsFile(schema.FlatEnums, filePath);
-        OnSeparateEnumsWritten(filePath);
+        IReadOnlyList<FileWriteContext> files = schema.Lookup.HasDuplicates
+            ? [.. Blocks.BuildEnums(schema).Select(block => CreateFile(filePath, block, [], false))]
+            :
+            [
+                CreateFile(
+                    filePath,
+                    new SchemaBlock(
+                        NamespaceContext.Build(string.Empty, Generation.CustomNamespace),
+                        [],
+                        schema.Schema.FlatEnums),
+                    [],
+                    false)
+            ];
+
+        WriteSchemaFile(filePath, files, [], schema);
+
+        if (Generation.IsSplitMode)
+            Log.Info($"Written: {Path.GetFileName(filePath)}");
     }
 
-    private void WriteSchemaContent<TBufferWriter>(
-        ref Utf8StringWriter<TBufferWriter> writer,
-        FileWriteContext context,
-        HashSet<string> enumTypeNames)
+    private static void WriteIncludes<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
+        IReadOnlyList<string> includes)
         where TBufferWriter : IBufferWriter<byte>
     {
-        foreach (var include in context.Includes)
+        foreach (var include in includes)
             writer.AppendFormat($"include \"{include}\";\n");
 
-        if (context.Includes.Count > 0)
+        if (includes.Count > 0)
             writer.AppendLine();
+    }
 
-        if (!string.IsNullOrEmpty(context.Namespace.FinalNamespace))
-            writer.AppendFormat($"namespace {context.Namespace.FinalNamespace};\n\n");
+    private void WriteSchema<TBufferWriter>(
+        ref Utf8StringWriter<TBufferWriter> writer,
+        FileWriteContext file,
+        SchemaWriteContext schema)
+        where TBufferWriter : IBufferWriter<byte>
+    {
+        if (!string.IsNullOrEmpty(file.Namespace.FinalNamespace))
+            writer.AppendFormat($"namespace {file.Namespace.FinalNamespace};\n\n");
 
-        foreach (var flatEnum in context.Enums)
+        foreach (var fEnum in file.Enums)
         {
-            WriteTableEnum(ref writer, flatEnum);
+            WriteEnum(ref writer, fEnum);
             writer.AppendLine();
         }
 
-        foreach (var flatTable in context.Tables)
+        foreach (var table in file.Tables)
         {
-            WriteTable(ref writer, flatTable, context, enumTypeNames);
+            WriteTable(ref writer, table, file, schema);
             writer.AppendLine();
         }
     }
 
     private void WriteTable<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatTable table,
-        FileWriteContext context, HashSet<string> enumTypeNames)
+        FileWriteContext file, SchemaWriteContext schema)
         where TBufferWriter : IBufferWriter<byte>
     {
         writer.AppendFormat($"table {table.TableName} {{\n");
 
         if (table.NoCreate) writer.AppendLiteral("\t// No Create method\n");
 
-        foreach (var tableField in table.Fields)
-            WriteTableField(ref writer, tableField, table, context, enumTypeNames);
+        foreach (var field in table.Fields)
+            WriteField(ref writer, new FieldWriteContext(field, table, file, schema));
 
         writer.AppendLiteral("}\n");
     }
 
-    private static void WriteTableEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatEnum fEnum)
+    private static void WriteEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatEnum fEnum)
         where TBufferWriter : IBufferWriter<byte>
     {
         var enumTypeName = TypeHelper.SystemToStringType(fEnum.Type);
@@ -149,17 +177,16 @@ public abstract partial class SchemaGeneratorServiceBase
         writer.AppendLiteral("}\n");
     }
 
-    private void WriteTableField<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatField field,
-        FlatTable table, FileWriteContext context, HashSet<string> enumTypeNames)
+    private void WriteField<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FieldWriteContext field)
         where TBufferWriter : IBufferWriter<byte>
     {
-        var fieldName = Generation.ForceSnakeCase ? CamelToSnake(field.Name) : field.Name;
-        var fieldType = TypeHelper.SystemToStringType(field.Type);
-        fieldType = ResolveFieldType(fieldType, field, table, context, enumTypeNames);
+        var name = Generation.ForceSnakeCase ? CamelToSnake(field.Field.Name) : field.Field.Name;
+        var type = TypeHelper.SystemToStringType(field.Field.Type);
+        type = ResolveFieldType(type, field);
 
-        if (field.IsArray) fieldType = $"[{fieldType}]";
+        if (field.Field.IsArray) type = $"[{type}]";
 
-        writer.AppendFormat($"\t{fieldName}: {fieldType}; // index 0x{field.Offset:X}\n");
+        writer.AppendFormat($"\t{name}: {type}; // index 0x{field.Field.Offset:X}\n");
     }
 
     [GeneratedRegex(@"(([a-z])(?=[A-Z][a-zA-Z])|([A-Z])(?=[A-Z][a-z]))")]

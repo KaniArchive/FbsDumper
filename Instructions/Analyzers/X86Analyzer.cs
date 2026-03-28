@@ -49,38 +49,23 @@ internal partial class X86Analyzer : IInstructionAnalyzer
     [GeneratedRegex(@"param(\d+)")]
     private static partial Regex ParamNumberRegex();
 
-    private static Register GetCanonicalRegister(Register reg)
-    {
-        return reg.GetFullRegister().GetFullRegister();
-    }
+    private static Register GetCanonicalRegister(Register reg) => reg.GetFullRegister().GetFullRegister();
 
-    private static bool IsImmediateOperand(OpKind opKind)
-    {
-        return opKind is OpKind.Immediate32 or OpKind.Immediate64;
-    }
+    private static bool IsImmediateOperand(OpKind opKind) => opKind is OpKind.Immediate32 or OpKind.Immediate64;
 
-    private static bool IsStackPointerSubtraction(Instruction instr)
-    {
-        return instr is { Mnemonic: Mnemonic.Sub, Op0Register: Register.RSP } &&
-               IsImmediateOperand(instr.Op1Kind);
-    }
+    private static bool IsStackPointerSubtraction(Instruction instr) =>
+        instr is { Mnemonic: Mnemonic.Sub, Op0Register: Register.RSP } &&
+        IsImmediateOperand(instr.Op1Kind);
 
-    private static bool IsRegisterToRegisterMove(Instruction instr)
-    {
-        return instr.Mnemonic == Mnemonic.Mov &&
-               instr is { Op0Kind: OpKind.Register, Op1Kind: OpKind.Register };
-    }
+    private static bool IsRegisterToRegisterMove(Instruction instr) =>
+        instr.Mnemonic == Mnemonic.Mov &&
+        instr is { Op0Kind: OpKind.Register, Op1Kind: OpKind.Register };
 
-    private static bool IsSelfXor(Instruction instr)
-    {
-        return instr is { Mnemonic: Mnemonic.Xor, Op0Kind: OpKind.Register } &&
-               instr.Op0Register == instr.Op1Register;
-    }
+    private static bool IsSelfXor(Instruction instr) =>
+        instr is { Mnemonic: Mnemonic.Xor, Op0Kind: OpKind.Register } &&
+        instr.Op0Register == instr.Op1Register;
 
-    private static bool IsStackMemoryAccess(Instruction instr)
-    {
-        return instr.MemoryBase == Register.RSP;
-    }
+    private static bool IsStackMemoryAccess(Instruction instr) => instr.MemoryBase == Register.RSP;
 
     private static ulong AnalyzePrologue(List<InstructionWithAddress> instructions)
     {
@@ -126,15 +111,12 @@ internal partial class X86Analyzer : IInstructionAnalyzer
         return new ValueSource($"param{paramNum}", tick);
     }
 
-    private static ValueSource GetSourceFromImmediate(Instruction instr, ulong tick)
-    {
-        return new ValueSource($"immediate:0x{instr.Immediate32:X}", tick);
-    }
+    private static ValueSource GetSourceFromImmediate(Instruction instr, ulong tick) =>
+        new($"immediate:0x{instr.Immediate32:X}", tick);
 
     private static ValueSource? DetermineValueSource(Instruction instr, Dictionary<Register, ValueSource> regState,
-        Dictionary<ulong, ValueSource> stackState, ulong totalStackAllocation, ulong tick)
-    {
-        return instr.Op1Kind switch
+        Dictionary<ulong, ValueSource> stackState, ulong totalStackAllocation, ulong tick) =>
+        instr.Op1Kind switch
         {
             OpKind.Register => GetSourceFromRegister(regState, instr.Op1Register),
             OpKind.Memory when IsStackMemoryAccess(instr) => GetSourceFromStackMemory(stackState, instr,
@@ -142,7 +124,6 @@ internal partial class X86Analyzer : IInstructionAnalyzer
             var kind when IsImmediateOperand(kind) => GetSourceFromImmediate(instr, tick),
             _ => null
         };
-    }
 
     private static void UpdateDestination(Instruction instr, ValueSource source,
         Dictionary<Register, ValueSource> regState,
@@ -213,9 +194,6 @@ internal partial class X86Analyzer : IInstructionAnalyzer
         public string Id { get; } = id;
         public ulong Tick { get; } = tick;
 
-        public override string ToString()
-        {
-            return Id;
-        }
+        public override string ToString() => Id;
     }
 }

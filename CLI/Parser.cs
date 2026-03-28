@@ -10,30 +10,32 @@ namespace FbsDumper.CLI;
 
 public static class Parser
 {
+    private static readonly string FlatBaseType = "FlatBuffers.IFlatbufferObject";
     private static string _dummyAssemblyDir = "DummyDll";
     public static string GameAssemblyPath = "libil2cpp.so";
     public static string? NameSpace2LookFor;
-    private static readonly string FlatBaseType = "FlatBuffers.IFlatbufferObject";
+
     public static FlatBuilder? FlatBufferBuilder;
     public static readonly List<TypeDefinition> FlatEnumsToAdd = [];
-    public static bool SuppressWarnings;
-    public static bool NoAsmProcessing;
+
     public static bool Force;
     public static bool SkipDuplicates;
+    public static bool SuppressWarnings;
+    public static bool NoAsmProcessing;
 
-    public static void Execute(string dummyDll, string gameAssembly, string outputFile, string nameSpace,
-        bool forceSnakeCase, string? namespaceToLookFor, bool split, EnumOut enumOut, bool force, bool skipDuplicates,
+    public static void Execute(string dummyDll, string gameAssembly, string? namespaceToLookFor, string outputFile,
+        string nameSpace, bool split, EnumOut enumOut, bool forceSnakeCase, bool force, bool skipDuplicates,
         bool verbose, bool suppressWarnings)
     {
         if (verbose) Log.EnableDebugLogging();
 
-        SuppressWarnings = suppressWarnings;
-        Force = force;
-        SkipDuplicates = skipDuplicates;
-
         _dummyAssemblyDir = dummyDll;
         GameAssemblyPath = gameAssembly;
         NameSpace2LookFor = namespaceToLookFor;
+
+        Force = force;
+        SkipDuplicates = skipDuplicates;
+        SuppressWarnings = suppressWarnings;
 
         var customNamespace = split ? nameSpace == "FlatData" ? null : nameSpace : nameSpace;
 
@@ -112,6 +114,13 @@ public static class Parser
         Log.Info("Adding enums...");
         foreach (var fEnum in FlatEnumsToAdd.AsValueEnumerable().Select(TypeHelper.TypeToEnum))
             schema.FlatEnums.Add(fEnum);
+
+        if (SkipDuplicates)
+        {
+            var distinctEnums = TypeHelper.CollapseDuplicatesByName(schema.FlatEnums, fEnum => fEnum.EnumName);
+            schema.FlatEnums.Clear();
+            schema.FlatEnums.AddRange(distinctEnums);
+        }
 
         var generation = new FileGenerationContext(outputFile, customNamespace, enumOut, forceSnakeCase, split);
         FileGeneratorService.Write(schema, generation);

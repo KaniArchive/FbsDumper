@@ -42,20 +42,15 @@ internal static class TypeHelper
         return name;
     }
 
-    public static ITypeParser GetTypeParser(Architecture architecture)
-    {
-        return architecture switch
+    public static ITypeParser GetTypeParser(Architecture architecture) =>
+        architecture switch
         {
             Architecture.Arm64 => new ArmTypeParser(),
             Architecture.X86 => new X86TypeParser(),
             _ => throw new ArgumentException($"Unsupported architecture: {architecture}")
         };
-    }
 
-    public static string CleanFieldName(string fieldName)
-    {
-        return fieldName.Replace("_", "");
-    }
+    public static string CleanFieldName(string fieldName) => fieldName.Replace("_", "");
 
     public static Architecture DetectArchitecture(string gameAssemblyPath)
     {
@@ -82,11 +77,17 @@ internal static class TypeHelper
             return [.. byName.AsValueEnumerable().Select(g => g.First()).ToArray()];
 
         foreach (var g in byName.AsValueEnumerable().Where(g => g.Count() > 1))
-            Log.Warning(
-                $"Duplicate type name '{g.Key}' found in multiple namespaces. Use --skip-duplicates to resolve naming conflicts.");
+            Log.Warning($"Duplicate type name '{g.Key}' found in multiple namespaces.");
 
         return ret;
     }
+
+    public static List<T> CollapseDuplicatesByName<T>(IEnumerable<T> items, Func<T, string> nameSelector) =>
+    [
+        .. items
+            .GroupBy(nameSelector, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+    ];
 
     public static FlatTable TypeToTable(ITypeParser typeParser, TypeDefinition targetType)
     {

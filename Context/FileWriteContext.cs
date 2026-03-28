@@ -8,5 +8,5 @@ public readonly record struct FileWriteContext(
     IReadOnlyList<FlatTable> Tables,
     IReadOnlyList<FlatEnum> Enums,
     IReadOnlyList<string> Includes,
-    FileGenerationContext Generation
+    bool QualifyTypes
 );

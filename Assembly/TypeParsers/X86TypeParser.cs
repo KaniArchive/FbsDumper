@@ -96,7 +96,7 @@ internal class X86TypeParser : ITypeParser
                     Log.Debug($"Has started, instance will have {max} fields");
                     break;
 
-                case var _ when target == Parser.FlatBufferBuilder!.EndObject:
+                case var _ when target == Parser.FlatBufferBuilder.EndObject:
                 case var _ when target == endMethodRva:
                     return ret;
 
@@ -121,13 +121,13 @@ internal class X86TypeParser : ITypeParser
 
                     var paramIndex = (int)call.ArgIndex! - 1;
                     var parameter = createMethod.Parameters[paramIndex];
-                    
+
                     if (parameter.Name == "builder")
                     {
                         Log.Debug($"Skipping builder parameter '{parameter.Name}' at index {paramIndex}");
                         continue;
                     }
-                    
+
                     if (seenParameterIndices.Contains(paramIndex))
                     {
                         Log.Debug($"Skipping duplicate parameter at index {paramIndex}");
@@ -136,7 +136,7 @@ internal class X86TypeParser : ITypeParser
 
                     ret.Add(fieldIndex, parameter);
                     seenParameterIndices.Add(paramIndex);
-                    fieldIndex++; 
+                    fieldIndex++;
                     cur += 1;
                     break;
             }
