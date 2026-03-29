@@ -17,9 +17,14 @@ public class FlatBuilder
         var methodsWithRva = flatBufferBuilderType.Methods
             .AsValueEnumerable()
             .Select(method => new { Method = method, Rva = InstructionsParser.GetMethodRva(method) })
+            .Where(x => x.Rva != 0)
             .ToArray();
 
-        Methods = methodsWithRva.AsValueEnumerable().ToDictionary(x => x.Rva, x => x.Method);
+        Methods = methodsWithRva
+            .AsValueEnumerable()
+            .GroupBy(x => x.Rva)
+            .Select(g => g.First())
+            .ToDictionary(x => x.Rva, x => x.Method);
 
         StartObject = methodsWithRva.AsValueEnumerable().First(x => x.Method.Name == "StartObject").Rva;
         EndObject = methodsWithRva.AsValueEnumerable().First(x => x.Method.Name == "EndObject").Rva;

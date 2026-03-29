@@ -89,7 +89,7 @@ internal class X86TypeParser : ITypeParser
 
             switch (target)
             {
-                case var _ when target == Parser.FlatBufferBuilder.StartObject:
+                case var _ when target == Parser.FlatBufferBuilder!.StartObject:
                     hasStarted = true;
                     max = ParseEdxValue(call);
 
@@ -103,31 +103,31 @@ internal class X86TypeParser : ITypeParser
                 default:
                     if (!hasStarted)
                     {
-                        Log.Global.LogSkippingCall((ulong)target, "StartObject hasn't been called yet");
+                        Log.Global?.LogSkippingCall((ulong)target, "StartObject hasn't been called yet");
                         continue;
                     }
 
                     if (!typeMethods.TryGetValue(target, out _))
                     {
-                        Log.Global.LogSkippingCall((ulong)target, $"it's not part of the {targetType.FullName}");
+                        Log.Global?.LogSkippingCall((ulong)target, $"it's not part of the {targetType.FullName}");
                         continue;
                     }
 
                     if (cur >= max)
                     {
-                        Log.Global.LogSkippingCall((ulong)target, "max amount of fields has been reached");
+                        Log.Global?.LogSkippingCall((ulong)target, "max amount of fields has been reached");
                         continue;
                     }
 
                     var paramIndex = (int)call.ArgIndex! - 1;
                     var parameter = createMethod.Parameters[paramIndex];
-                    
+
                     if (parameter.Name == "builder")
                     {
                         Log.Debug($"Skipping builder parameter '{parameter.Name}' at index {paramIndex}");
                         continue;
                     }
-                    
+
                     if (seenParameterIndices.Contains(paramIndex))
                     {
                         Log.Debug($"Skipping duplicate parameter at index {paramIndex}");
@@ -136,7 +136,7 @@ internal class X86TypeParser : ITypeParser
 
                     ret.Add(fieldIndex, parameter);
                     seenParameterIndices.Add(paramIndex);
-                    fieldIndex++; 
+                    fieldIndex++;
                     cur += 1;
                     break;
             }

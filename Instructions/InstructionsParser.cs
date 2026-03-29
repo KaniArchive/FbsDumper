@@ -189,12 +189,10 @@ internal class InstructionsParser
         return instructions;
     }
 
-    private static string GetOperandString(Arm64Instruction instruction)
-    {
-        return instruction.Operands.Count == 0
+    private static string GetOperandString(Arm64Instruction instruction) =>
+        instruction.Operands.Count == 0
             ? string.Empty
             : instruction.Operands.AsValueEnumerable().Select(operand => operand.ToString()).JoinToString(", ");
-    }
 
     public static long GetMethodRva(MethodDefinition method)
     {

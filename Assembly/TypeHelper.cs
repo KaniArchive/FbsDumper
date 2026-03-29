@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using FbsDumper.Assembly.TypeParsers;
 using FbsDumper.CLI;
@@ -11,22 +12,47 @@ namespace FbsDumper.Assembly;
 
 internal static class TypeHelper
 {
-    public static readonly InstructionsParser InstructionsResolver = new(Parser.GameAssemblyPath);
+    private static InstructionsParser? _instructionsResolver;
 
-    public static ITypeParser GetTypeParser(Architecture architecture)
+    private static FrozenDictionary<string, string> TypeMap =>
+        new Dictionary<string, string>
+        {
+            ["System.String"] = "string",
+            ["System.Int16"] = "short",
+            ["System.UInt16"] = "ushort",
+            ["System.Int32"] = "int",
+            ["System.UInt32"] = "uint",
+            ["System.Int64"] = "long",
+            ["System.UInt64"] = "ulong",
+            ["System.Boolean"] = "bool",
+            ["System.Single"] = "float",
+            ["System.SByte"] = "int8",
+            ["System.Byte"] = "uint8"
+        }.ToFrozenDictionary();
+
+    private static InstructionsParser InstructionsResolver =>
+        _instructionsResolver ??= new InstructionsParser(Parser.GameAssemblyPath);
+
+    public static string SystemToStringType(TypeDefinition field)
     {
-        return architecture switch
+        var fullName = field.FullName;
+        if (TypeMap.TryGetValue(fullName, out var type)) return type;
+
+        var name = field.Name;
+        if (name.StartsWith("System.")) Log.Global.LogUnknownSystemType(name);
+
+        return name;
+    }
+
+    public static ITypeParser GetTypeParser(Architecture architecture) =>
+        architecture switch
         {
             Architecture.Arm64 => new ArmTypeParser(),
             Architecture.X86 => new X86TypeParser(),
             _ => throw new ArgumentException($"Unsupported architecture: {architecture}")
         };
-    }
 
-    public static string CleanFieldName(string fieldName)
-    {
-        return fieldName.Replace("_", "");
-    }
+    public static string CleanFieldName(string fieldName) => fieldName.Replace("_", "");
 
     public static Architecture DetectArchitecture(string gameAssemblyPath)
     {
@@ -47,16 +73,28 @@ internal static class TypeHelper
         if (!string.IsNullOrEmpty(Parser.NameSpace2LookFor))
             ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == Parser.NameSpace2LookFor).ToArray()];
 
-        // Dedupe
-        ret = [..ret.AsValueEnumerable().DistinctBy(t => t.Name).ToArray()];
+        var byName = ret.AsValueEnumerable().GroupBy(t => t.Name).ToArray();
+
+        if (Parser.SkipDuplicates)
+            return [.. byName.AsValueEnumerable().Select(g => g.First()).ToArray()];
+
+        foreach (var g in byName.AsValueEnumerable().Where(g => g.Count() > 1))
+            Log.Warning($"Duplicate type name '{g.Key}' found in multiple namespaces.");
 
         return ret;
     }
 
+    public static List<T> CollapseDuplicatesByName<T>(IEnumerable<T> items, Func<T, string> nameSelector) =>
+    [
+        .. items
+            .GroupBy(nameSelector, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+    ];
+
     public static FlatTable TypeToTable(ITypeParser typeParser, TypeDefinition targetType)
     {
         var typeName = targetType.Name;
-        var ret = new FlatTable(typeName);
+        var ret = new FlatTable(typeName, targetType.Namespace);
 
         var createMethod = targetType.Methods.FirstOrDefault(m =>
             m.Name == $"Create{typeName}" &&
@@ -99,7 +137,7 @@ internal static class TypeHelper
     public static FlatEnum TypeToEnum(TypeDefinition typeDef)
     {
         var retType = typeDef.GetEnumUnderlyingType().Resolve();
-        var ret = new FlatEnum(retType, typeDef.Name);
+        var ret = new FlatEnum(retType, typeDef.Name, typeDef.Namespace);
 
         foreach (var fieldDef in typeDef.Fields.AsValueEnumerable().Where(f => f.HasConstant))
         {
@@ -139,9 +177,4 @@ internal static class TypeHelper
         var endMethod = targetType.Methods.First(m => m.Name == $"End{targetType.Name}");
         return InstructionsParser.GetMethodRva(endMethod);
     }
-}
-
-internal interface ITypeParser
-{
-    void ProcessFields(ref FlatTable ret, MethodDefinition createMethod, TypeDefinition targetType);
 }
