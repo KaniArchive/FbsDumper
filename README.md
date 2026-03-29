@@ -31,17 +31,8 @@ FbsDumper.exe --dummy-dll "path/to/DummyDll" --split --output-file "./output"
 # Split with a custom root namespace prefix
 FbsDumper.exe --dummy-dll "path/to/DummyDll" --split --namespace "MyGame" --output-file "./output"
 
-# Split with no root namespace (use original IL namespaces)
-FbsDumper.exe --dummy-dll "path/to/DummyDll" --split --namespace "" --output-file "./output"
-
 # Split enums into a separate enums.fbs (instead of inlining into each namespace file)
 FbsDumper.exe --dummy-dll "path/to/DummyDll" --split --enum-out Separate --output-file "./output"
-
-# Omit enums entirely
-FbsDumper.exe --dummy-dll "path/to/DummyDll" --enum-out Omit
-
-# Single file with enums in a separate file
-FbsDumper.exe --dummy-dll "path/to/DummyDll" --enum-out Separate
 ```
 
 ## Build
