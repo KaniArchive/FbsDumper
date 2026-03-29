@@ -24,7 +24,7 @@ public static class Args
         string gameAssembly = "",
         string? namespaceToLookFor = null,
         string outputFile = "BlueArchive.fbs",
-        string @namespace = "FlatData",
+        string @namespace = "",
         bool split = false,
         EnumOut enumOut = EnumOut.Inline,
         bool forceSnakeCase = false,

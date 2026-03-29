@@ -37,7 +37,7 @@ public static class Parser
         SkipDuplicates = skipDuplicates;
         SuppressWarnings = suppressWarnings;
 
-        var customNamespace = split ? nameSpace == "FlatData" ? null : nameSpace : nameSpace;
+        var customNamespace = string.IsNullOrWhiteSpace(nameSpace) ? null : nameSpace;
 
         if (!Directory.Exists(_dummyAssemblyDir))
         {
