@@ -65,12 +65,12 @@ internal static class TypeHelper
     public static FlatTypeInfo GetStringType(TypeDef targetType) =>
         FlatTypeInfo.FromTypeSig(targetType.Module.CorLibTypes.String);
 
-    public static List<TypeDef> GetAllFlatBufferTypes(ModuleDef? module, string baseTypeName, string? namespaceToLookFor,
-        bool skipDuplicates)
+    public static List<TypeDef> GetAllFlatBufferTypes(ModuleDef? module, string baseTypeName,
+        string? namespaceToLookFor, bool skipDuplicates)
     {
         List<TypeDef> ret =
         [
-            .. module.GetTypes().AsValueEnumerable().Where(t =>
+            .. module!.GetTypes().AsValueEnumerable().Where(t =>
                 t.HasInterfaces &&
                 t.Interfaces.Any(i => i.Interface?.FullName == baseTypeName)
             ).ToArray()
@@ -105,7 +105,13 @@ internal static class TypeHelper
     public static FlatTable TypeToTable(ParserOptionsContext context, ITypeParser typeParser, TypeDef targetType)
     {
         var typeName = targetType.Name.String ?? string.Empty;
-        var ret = new FlatTable(typeName, targetType.Namespace.String ?? string.Empty);
+        var ret = new FlatTable(typeName, targetType.Namespace.String ?? string.Empty)
+        {
+            HasEncryption = targetType.Fields.Any(f =>
+                f.IsPublic && f.IsStatic &&
+                f.Name == "TableKey" &&
+                f.FieldType.FullName == "System.Byte[]")
+        };
 
         var createMethod = targetType.Methods.FirstOrDefault(m =>
             m.Name == $"Create{typeName}" &&

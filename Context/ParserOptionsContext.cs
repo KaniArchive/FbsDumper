@@ -4,7 +4,7 @@ using FbsDumper.Instructions;
 
 namespace FbsDumper.Context;
 
-internal sealed class ParserOptionsContext(
+public sealed class ParserOptionsContext(
     string dummyDllPath,
     string gameAssemblyPath,
     string? namespaceToLookFor,
@@ -35,6 +35,6 @@ internal sealed class ParserOptionsContext(
     public List<TypeDef> FlatEnumsToAdd { get; } = [];
     public bool NoAsmProcessing { get; set; }
 
-    public InstructionsParser InstructionsParser =>
+    internal InstructionsParser InstructionsParser =>
         field ??= new InstructionsParser(GameAssemblyPath);
 }

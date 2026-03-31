@@ -14,6 +14,7 @@ public class FlatTable(string tableName, string originalNamespace = "")
     public readonly string TableName = tableName;
     public readonly string OriginalNamespace = originalNamespace;
     public bool NoCreate = false;
+    public bool HasEncryption = false;
 }
 
 public class FlatField(FlatTypeInfo type, string name, bool isArray = false)

@@ -6,7 +6,7 @@ using ZLinq;
 
 namespace FbsDumper.Assembly;
 
-internal static class SchemaBuilder
+public static class SchemaBuilder
 {
     private const string FlatBaseType = "FlatBuffers.IFlatbufferObject";
 
