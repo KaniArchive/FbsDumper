@@ -1,6 +1,6 @@
 using System.Globalization;
 using dnlib.DotNet;
-using FbsDumper.CLI;
+using FbsDumper.Context;
 using FbsDumper.Helpers;
 using FbsDumper.Instructions;
 using ZLinq;
@@ -9,17 +9,18 @@ namespace FbsDumper.Assembly.TypeParsers;
 
 internal class X86TypeParser : ITypeParser
 {
-    public void ProcessFields(ref FlatTable ret, MethodDef createMethod, TypeDef targetType)
+    public void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
+        TypeDef targetType)
     {
         Dictionary<int, Parameter> dict;
 
         try
         {
-            dict = ParseCallsForCreateMethod(createMethod, targetType);
+            dict = ParseCallsForCreateMethod(context, createMethod, targetType);
         }
         catch (Exception)
         {
-            FieldParser.ForceProcessFields(ref ret, createMethod, targetType);
+            FieldParser.ForceProcessFields(context, ref ret, createMethod, targetType);
             return;
         }
 
@@ -41,13 +42,14 @@ internal class X86TypeParser : ITypeParser
             fieldType = FieldParser.ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeSig);
             fieldType = FieldParser.SetGeneric(fieldTypeSig, fieldType, field);
 
-            FieldParser.SaveEnum(field, fieldType);
+            FieldParser.SaveEnum(context, field, fieldType);
 
             ret.Fields.Add(field);
         }
     }
 
-    private static Dictionary<int, Parameter> ParseCallsForCreateMethod(MethodDef createMethod, TypeDef targetType)
+    private static Dictionary<int, Parameter> ParseCallsForCreateMethod(ParserOptionsContext context,
+        MethodDef createMethod, TypeDef targetType)
     {
         Dictionary<int, Parameter> ret = [];
         Dictionary<long, MethodDef> typeMethods = [];
@@ -59,7 +61,7 @@ internal class X86TypeParser : ITypeParser
             typeMethods.Add(rva, method);
         }
 
-        var calls = TypeHelper.GetAnalyzedCalls(createMethod);
+        var calls = TypeHelper.GetAnalyzedCalls(context, createMethod);
 
         var hasStarted = false;
         var max = 0;
@@ -86,14 +88,14 @@ internal class X86TypeParser : ITypeParser
 
             switch (target)
             {
-                case var _ when target == Parser.FlatBufferBuilder!.StartObject:
+                case var _ when target == context.FlatBufferBuilder!.StartObject:
                     hasStarted = true;
                     max = ParseEdxValue(call);
 
                     Log.Debug($"Has started, instance will have {max} fields");
                     break;
 
-                case var _ when target == Parser.FlatBufferBuilder.EndObject:
+                case var _ when target == context.FlatBufferBuilder.EndObject:
                 case var _ when target == endMethodRva:
                     return ret;
 

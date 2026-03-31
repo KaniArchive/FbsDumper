@@ -1,13 +1,13 @@
 using dnlib.DotNet;
-using FbsDumper.CLI;
+using FbsDumper.Context;
 using ZLinq;
 
 namespace FbsDumper.Assembly;
 
 public static class FieldParser
 {
-    public static TypeDef ProcessOffsets(TypeDef targetType, TypeDef fieldType, FlatField field, string fieldName,
-        ref TypeSig fieldTypeSig)
+    public static TypeDef ProcessOffsets(TypeDef targetType, TypeDef fieldType,
+        FlatField field, string fieldName, ref TypeSig fieldTypeSig)
     {
         switch (fieldType.FullName)
         {
@@ -47,7 +47,7 @@ public static class FieldParser
         return fieldType;
     }
 
-    private static TypeSig ProcessOffsetsByMethods(TypeDef targetType, TypeDef fieldType, FlatField field,
+    public static TypeSig ProcessOffsetsByMethods(TypeDef targetType, TypeDef fieldType, FlatField field,
         string fieldName, TypeSig fieldTypeSig, MethodDef method)
     {
         switch (fieldType.FullName)
@@ -82,7 +82,8 @@ public static class FieldParser
         return fieldTypeSig;
     }
 
-    public static void ForceProcessFields(ref FlatTable ret, MethodDef createMethod, TypeDef targetType)
+    internal static void ForceProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
+        TypeDef targetType)
     {
         foreach (var (param, offset) in createMethod.Parameters.AsValueEnumerable().Skip(1)
                      .Select((p, i) => (p, i + 1)))
@@ -101,7 +102,7 @@ public static class FieldParser
             fieldType = ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeSig);
             fieldType = SetGeneric(fieldTypeSig, fieldType, field);
 
-            SaveEnum(field, fieldType);
+            SaveEnum(context, field, fieldType);
 
             ret.Fields.Add(field);
         }
@@ -122,7 +123,8 @@ public static class FieldParser
             fieldTypeSig = ExtractGeneric(fieldTypeSig, ref fieldType);
             FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), fieldName);
 
-            fieldTypeSig = ProcessOffsetsByMethods(targetType, fieldType, field, fieldName, fieldTypeSig, method);
+            fieldTypeSig =
+                ProcessOffsetsByMethods(targetType, fieldType, field, fieldName, fieldTypeSig, method);
             SetGeneric(fieldTypeSig, fieldType, field);
 
             ret.Fields.Add(field);
@@ -149,9 +151,9 @@ public static class FieldParser
         return fieldType;
     }
 
-    public static void SaveEnum(FlatField field, TypeDef fieldType)
+    internal static void SaveEnum(ParserOptionsContext context, FlatField field, TypeDef fieldType)
     {
-        if (field.Type.IsEnum && !Parser.FlatEnumsToAdd.Contains(fieldType))
-            Parser.FlatEnumsToAdd.Add(fieldType);
+        if (field.Type.IsEnum && !context.FlatEnumsToAdd.Contains(fieldType))
+            context.FlatEnumsToAdd.Add(fieldType);
     }
 }

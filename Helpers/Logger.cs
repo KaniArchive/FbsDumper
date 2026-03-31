@@ -1,4 +1,3 @@
-using FbsDumper.CLI;
 using Kokuban;
 using Microsoft.Extensions.Logging;
 using ZLogger;
@@ -10,6 +9,7 @@ public static class Log
     private static ILoggerFactory? _loggerFactory;
     private static ILogger? _logger;
     private static bool _isInitialized;
+    public static bool SuppressWarnings { get; set; }
 
     public static ILogger? Global
     {
@@ -40,7 +40,7 @@ public static class Log
 
     public static void Warning(string message)
     {
-        if (Parser.SuppressWarnings) return;
+        if (SuppressWarnings) return;
         EnsureInitialized();
         _logger?.ZLogWarning($"{message}");
     }
@@ -64,6 +64,7 @@ public static class Log
         _loggerFactory = null;
         _logger = null;
         _isInitialized = false;
+        SuppressWarnings = false;
     }
 
     private static void EnsureInitialized()
@@ -131,7 +132,7 @@ public static partial class LogMessages
 
     public static void LogUnknownSystemType(this ILogger? logger, string typeName)
     {
-        if (!Parser.SuppressWarnings) logger?.LogUnknownSystemTypeInternal(typeName);
+        if (!Log.SuppressWarnings) logger?.LogUnknownSystemTypeInternal(typeName);
     }
 
     [ZLoggerMessage(LogLevel.Debug, "\t0x{address:X}: {mnemonic} {operand}")]
@@ -146,6 +147,6 @@ public static partial class LogMessages
 
     public static void LogSkippingCall(this ILogger? logger, ulong address, string reason)
     {
-        if (!Parser.SuppressWarnings) logger?.LogSkippingCallInternal(address, reason);
+        if (!Log.SuppressWarnings) logger?.LogSkippingCallInternal(address, reason);
     }
 }

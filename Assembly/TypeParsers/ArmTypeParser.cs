@@ -1,6 +1,6 @@
 using System.Globalization;
 using dnlib.DotNet;
-using FbsDumper.CLI;
+using FbsDumper.Context;
 using FbsDumper.Helpers;
 using FbsDumper.Instructions;
 using ZLinq;
@@ -9,9 +9,10 @@ namespace FbsDumper.Assembly.TypeParsers;
 
 internal class ArmTypeParser : ITypeParser
 {
-    public void ProcessFields(ref FlatTable ret, MethodDef createMethod, TypeDef targetType)
+    public void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
+        TypeDef targetType)
     {
-        var dict = ParseCallsForCreateMethod(createMethod, targetType);
+        var dict = ParseCallsForCreateMethod(context, createMethod, targetType);
         dict = dict.AsValueEnumerable().OrderBy(t => t.Key).ToDictionary();
 
         foreach (var (key, methodDef) in dict)
@@ -31,12 +32,13 @@ internal class ArmTypeParser : ITypeParser
             fieldType = FieldParser.ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeSig);
             fieldType = FieldParser.SetGeneric(fieldTypeSig, fieldType, field);
 
-            FieldParser.SaveEnum(field, fieldType);
+            FieldParser.SaveEnum(context, field, fieldType);
             ret.Fields.Add(field);
         }
     }
 
-    private static Dictionary<int, MethodDef> ParseCallsForCreateMethod(MethodDef createMethod, TypeDef targetType)
+    private static Dictionary<int, MethodDef> ParseCallsForCreateMethod(ParserOptionsContext context,
+        MethodDef createMethod, TypeDef targetType)
     {
         Dictionary<int, MethodDef> ret = [];
         Dictionary<long, MethodDef> typeMethods = [];
@@ -47,7 +49,7 @@ internal class ArmTypeParser : ITypeParser
             typeMethods.Add(rva, method);
         }
 
-        var calls = TypeHelper.GetAnalyzedCalls(createMethod);
+        var calls = TypeHelper.GetAnalyzedCalls(context, createMethod);
 
         var hasStarted = false;
         var max = 0;
@@ -71,7 +73,7 @@ internal class ArmTypeParser : ITypeParser
 
             switch (target)
             {
-                case var _ when target == Parser.FlatBufferBuilder!.StartObject:
+                case var _ when target == context.FlatBufferBuilder!.StartObject:
                     hasStarted = true;
 
                     var cnt = ParseArgument(call, "w1");
@@ -81,7 +83,7 @@ internal class ArmTypeParser : ITypeParser
                     Log.Debug($"Has started, instance will have {cnt} fields");
                     break;
 
-                case var _ when target == Parser.FlatBufferBuilder.EndObject:
+                case var _ when target == context.FlatBufferBuilder.EndObject:
                 case var _ when target == endMethodRva:
                     return ret;
 
@@ -101,7 +103,7 @@ internal class ArmTypeParser : ITypeParser
                         continue;
                     }
 
-                    var index = ParseCallsForAddMethod(method);
+                    var index = ParseCallsForAddMethod(context, method);
                     ret.Add(index, method);
                     cur += 1;
                     break;
@@ -111,15 +113,15 @@ internal class ArmTypeParser : ITypeParser
         return ret;
     }
 
-    private static int ParseCallsForAddMethod(MethodDef createMethod)
+    private static int ParseCallsForAddMethod(ParserOptionsContext context, MethodDef createMethod)
     {
-        var calls = TypeHelper.GetAnalyzedCalls(createMethod);
+        var calls = TypeHelper.GetAnalyzedCalls(context, createMethod);
         var call = calls.First(m =>
         {
             if (string.IsNullOrEmpty(m.Target)) return false;
 
             return TypeHelper.TryParseTarget(m.Target, out var target) &&
-                   Parser.FlatBufferBuilder!.Methods.ContainsKey(target);
+                   context.FlatBufferBuilder!.Methods.ContainsKey(target);
         });
 
         var cnt = ParseArgument(call, "w1");

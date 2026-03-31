@@ -1,18 +1,16 @@
 using System.Collections.Frozen;
 using System.Globalization;
+using dnlib.DotNet;
 using FbsDumper.Assembly.TypeParsers;
-using FbsDumper.CLI;
+using FbsDumper.Context;
 using FbsDumper.Helpers;
 using FbsDumper.Instructions;
-using dnlib.DotNet;
 using ZLinq;
 
 namespace FbsDumper.Assembly;
 
 internal static class TypeHelper
 {
-    private static InstructionsParser? _instructionsResolver;
-
     private static FrozenDictionary<string, string> TypeMap =>
         new Dictionary<string, string>
         {
@@ -28,9 +26,6 @@ internal static class TypeHelper
             ["System.SByte"] = "int8",
             ["System.Byte"] = "uint8"
         }.ToFrozenDictionary();
-
-    private static InstructionsParser InstructionsResolver =>
-        _instructionsResolver ??= new InstructionsParser(Parser.GameAssemblyPath);
 
     public static string SystemToStringType(FlatTypeInfo field)
     {
@@ -70,7 +65,8 @@ internal static class TypeHelper
     public static FlatTypeInfo GetStringType(TypeDef targetType) =>
         FlatTypeInfo.FromTypeSig(targetType.Module.CorLibTypes.String);
 
-    public static List<TypeDef> GetAllFlatBufferTypes(ModuleDef module, string baseTypeName)
+    public static List<TypeDef> GetAllFlatBufferTypes(ModuleDef module, string baseTypeName, string? namespaceToLookFor,
+        bool skipDuplicates)
     {
         List<TypeDef> ret =
         [
@@ -80,17 +76,17 @@ internal static class TypeHelper
             ).ToArray()
         ];
 
-        if (!string.IsNullOrEmpty(Parser.NameSpace2LookFor))
+        if (!string.IsNullOrEmpty(namespaceToLookFor))
             ret =
             [
                 .. ret.AsValueEnumerable().Where(t =>
-                    string.Equals(t.Namespace.String, Parser.NameSpace2LookFor, StringComparison.Ordinal)
+                    string.Equals(t.Namespace.String, namespaceToLookFor, StringComparison.Ordinal)
                 ).ToArray()
             ];
 
         var byName = ret.AsValueEnumerable().GroupBy(t => t.Name.String ?? string.Empty).ToArray();
 
-        if (Parser.SkipDuplicates)
+        if (skipDuplicates)
             return [.. byName.AsValueEnumerable().Select(g => g.First()).ToArray()];
 
         foreach (var g in byName.AsValueEnumerable().Where(g => g.Count() > 1))
@@ -106,7 +102,7 @@ internal static class TypeHelper
             .Select(group => group.First())
     ];
 
-    public static FlatTable TypeToTable(ITypeParser typeParser, TypeDef targetType)
+    public static FlatTable TypeToTable(ParserOptionsContext context, ITypeParser typeParser, TypeDef targetType)
     {
         var typeName = targetType.Name.String ?? string.Empty;
         var ret = new FlatTable(typeName, targetType.Namespace.String ?? string.Empty);
@@ -118,21 +114,21 @@ internal static class TypeHelper
             m is { IsStatic: true, IsPublic: true }
         );
 
-        if (Parser.NoAsmProcessing)
+        if (context.NoAsmProcessing)
         {
             if (createMethod == null)
-                return Parser.Force
+                return context.Force
                     ? ProcessWithForceMethod(ref ret, targetType)
                     : ProcessWithoutCreateMethod(ret, targetType);
 
-            FieldParser.ForceProcessFields(ref ret, createMethod, targetType);
+            FieldParser.ForceProcessFields(context, ref ret, createMethod, targetType);
             return ret;
         }
 
         if (createMethod == null)
             return ProcessWithoutCreateMethod(ret, targetType);
 
-        typeParser.ProcessFields(ref ret, createMethod, targetType);
+        typeParser.ProcessFields(context, ref ret, createMethod, targetType);
         return ret;
     }
 
@@ -156,7 +152,8 @@ internal static class TypeHelper
 
         foreach (var fieldDef in typeDef.Fields.AsValueEnumerable().Where(f => f.HasConstant))
         {
-            var enumField = new FlatEnumField(fieldDef.Name.String ?? string.Empty, Convert.ToInt64(fieldDef.Constant.Value));
+            var enumField = new FlatEnumField(fieldDef.Name.String ?? string.Empty,
+                Convert.ToInt64(fieldDef.Constant.Value));
             ret.Fields.Add(enumField);
         }
 
@@ -180,10 +177,11 @@ internal static class TypeHelper
                long.TryParse(targetDecimal, NumberStyles.Integer, null, out result);
     }
 
-    public static List<InstructionsAnalyzer.CallInfo> GetAnalyzedCalls(MethodDef createMethod)
+    public static List<InstructionsAnalyzer.CallInfo> GetAnalyzedCalls(ParserOptionsContext context,
+        MethodDef createMethod)
     {
-        var instructions = InstructionsResolver.GetInstructions(createMethod);
-        var analyzer = InstructionsAnalyzer.GetAnalyzer(InstructionsResolver.Architecture);
+        var instructions = context.InstructionsParser.GetInstructions(createMethod);
+        var analyzer = InstructionsAnalyzer.GetAnalyzer(context.InstructionsParser.Architecture);
         return analyzer.AnalyzeCalls(instructions);
     }
 
