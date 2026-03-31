@@ -27,9 +27,11 @@ public static class FieldParser
                     : fieldName;
                 newFieldName = TypeHelper.CleanFieldName(newFieldName); // Needed for BA
 
-                var method = targetType.Methods.First(m =>
-                    m.Name.Equals(newFieldName, StringComparison.CurrentCultureIgnoreCase)
-                );
+                var method = targetType.Methods
+                    .AsValueEnumerable()
+                    .Where(m => m.Name.Equals(newFieldName, StringComparison.CurrentCultureIgnoreCase))
+                    .OrderByDescending(m => m.IsPublic)
+                    .First();
 
                 var typeDefinition = method.ReturnType.Resolve();
 
