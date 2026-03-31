@@ -41,7 +41,7 @@ FbsDumper.exe --dummy-dll "path/to/DummyDll" --split --enum-out Separate --outpu
 2. Clone this repository
 
 ```sh
-git clone https://github.com/ArkanDash/FbsDumper
+git clone https://github.com/KaniArchive/FbsDumper
 cd FbsDumper
 ```
 
@@ -56,8 +56,9 @@ dotnet build
 - `-d, --dummy-dll`: Specifies the dummy DLL directory (Required)
 - `-a, --game-assembly`: Specifies the path to libil2cpp.so (ARM) or GameAssembly.dll (x86/x64) (Optional: Skip assembly analysis)
 - `-o, --output-file`: Specifies the output file or directory when using `--split` (Default: BlueArchive.fbs)
-- `-n, --namespace`: Specifies the flatdata namespace. In `--split` mode acts as a root prefix prepended to each IL namespace; pass empty string to use IL namespaces verbatim (Default: FlatData)
+- `-n, --namespace`: Specifies the flatdata namespace. In `--split` mode acts as a root prefix prepended to each IL namespace
 - `-sp, --split`: Split output into one `.fbs` file per IL namespace, written flat into the output directory
+- `-ext, --extensions`: Extensions to enable (e.g. --extensions BlueArchive). If not specified, no extensions are run
 - `-eo, --enum-out`: How to handle enums: `Inline` (default), `Separate` (single `enums.fbs` at root), `Omit` (skip enums)
 - `-s, --force-snake-case`: Force snake case conversion
 - `-nl, --namespace-to-look-for`: Specifies the namespace to look for
