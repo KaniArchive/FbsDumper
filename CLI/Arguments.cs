@@ -23,7 +23,7 @@ public static class Args
         string dummyDll,
         string gameAssembly = "",
         string? namespaceToLookFor = null,
-        string outputFile = "BlueArchive.fbs",
+        string outputFile = "",
         string @namespace = "",
         bool split = false,
         EnumOut enumOut = EnumOut.Inline,
@@ -31,9 +31,8 @@ public static class Args
         bool force = false,
         bool skipDuplicates = false,
         bool verbose = false,
-        bool suppressWarnings = false)
-    {
-        Parser.Execute(dummyDll, gameAssembly, namespaceToLookFor, outputFile, @namespace, split, enumOut, forceSnakeCase, force, skipDuplicates, verbose,
+        bool suppressWarnings = false) =>
+        Parser.Execute(dummyDll, gameAssembly, namespaceToLookFor, outputFile, @namespace, split, enumOut,
+            forceSnakeCase, force, skipDuplicates, verbose,
             suppressWarnings);
-    }
 }

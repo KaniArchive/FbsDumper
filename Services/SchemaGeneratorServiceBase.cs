@@ -56,7 +56,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         if (!field.File.QualifyTypes || !field.Schema.Lookup.HasType(typeName))
             return typeName;
 
-        var typeNs = field.Field.Type.Namespace ?? string.Empty;
+        var typeNs = field.Field.Type.Namespace;
         if (typeNs == field.Table.OriginalNamespace)
             return typeName;
 
@@ -170,7 +170,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         writer.AppendLiteral("}\n");
     }
 
-    private void WriteField<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FieldWriteContext field)
+    protected virtual void WriteField<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FieldWriteContext field)
         where TBufferWriter : IBufferWriter<byte>
     {
         var name = Generation.ForceSnakeCase ? field.Field.Name.ToSnakeCase() : field.Field.Name;

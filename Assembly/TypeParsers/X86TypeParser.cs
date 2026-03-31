@@ -1,68 +1,49 @@
 using System.Globalization;
-using FbsDumper.CLI;
+using dnlib.DotNet;
+using FbsDumper.Context;
 using FbsDumper.Helpers;
 using FbsDumper.Instructions;
-using Mono.Cecil;
-using Mono.Cecil.Rocks;
 using ZLinq;
 
 namespace FbsDumper.Assembly.TypeParsers;
 
-internal class X86TypeParser : ITypeParser
+internal class X86TypeParser : FieldParser
 {
-    public void ProcessFields(ref FlatTable ret, MethodDefinition createMethod, TypeDefinition targetType)
+    public override void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
+        TypeDef targetType)
     {
-        Dictionary<int, ParameterDefinition> dict;
+        Dictionary<int, (Parameter param, MethodDef method)> dict;
 
         try
         {
-            dict = ParseCallsForCreateMethod(createMethod, targetType);
+            dict = ParseCallsForCreateMethod(context, createMethod, targetType);
         }
         catch (Exception)
         {
-            FieldParser.ForceProcessFields(ref ret, createMethod, targetType);
+            ForceProcessFields(context, ref ret, createMethod, targetType);
             return;
         }
 
         dict = dict.AsValueEnumerable().OrderBy(t => t.Key).ToDictionary();
 
-        foreach (var kvp in dict)
-        {
-            var param = kvp.Value;
-            var fieldType = param.ParameterType.Resolve();
-            var fieldTypeRef = param.ParameterType;
-            var fieldName = param.Name;
-
-            fieldTypeRef = FieldParser.ExtractGeneric(fieldTypeRef, ref fieldType);
-
-            FlatField field = new(fieldType, TypeHelper.CleanFieldName(fieldName))
-            {
-                Offset = kvp.Key
-            };
-
-            fieldType = FieldParser.ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeRef);
-            fieldType = FieldParser.SetGeneric(fieldTypeRef, fieldType, field);
-
-            FieldParser.SaveEnum(field, fieldType);
-
-            ret.Fields.Add(field);
-        }
+        foreach (var (key, (param, method)) in dict)
+            AddField(context, ref ret, targetType, key, param, method.Name.String);
     }
 
-    private static Dictionary<int, ParameterDefinition> ParseCallsForCreateMethod(MethodDefinition createMethod,
-        TypeDefinition targetType)
+    private static Dictionary<int, (Parameter param, MethodDef method)> ParseCallsForCreateMethod(
+        ParserOptionsContext context, MethodDef createMethod, TypeDef targetType)
     {
-        Dictionary<int, ParameterDefinition> ret = [];
-        Dictionary<long, MethodDefinition> typeMethods = [];
+        Dictionary<int, (Parameter, MethodDef)> ret = [];
+        Dictionary<long, MethodDef> typeMethods = [];
         HashSet<int> seenParameterIndices = [];
 
-        foreach (var method in createMethod.Parameters[0].ParameterType.Resolve().GetMethods())
+        foreach (var method in TypeHelper.ResolveTypeDef(createMethod.Parameters[0].Type).Methods)
         {
             var rva = InstructionsParser.GetMethodRva(method);
             typeMethods.Add(rva, method);
         }
 
-        var calls = TypeHelper.GetAnalyzedCalls(createMethod);
+        var calls = TypeHelper.GetAnalyzedCalls(context, createMethod);
 
         var hasStarted = false;
         var max = 0;
@@ -89,14 +70,14 @@ internal class X86TypeParser : ITypeParser
 
             switch (target)
             {
-                case var _ when target == Parser.FlatBufferBuilder!.StartObject:
+                case var _ when target == context.FlatBufferBuilder!.StartObject:
                     hasStarted = true;
                     max = ParseEdxValue(call);
 
                     Log.Debug($"Has started, instance will have {max} fields");
                     break;
 
-                case var _ when target == Parser.FlatBufferBuilder.EndObject:
+                case var _ when target == context.FlatBufferBuilder.EndObject:
                 case var _ when target == endMethodRva:
                     return ret;
 
@@ -107,7 +88,7 @@ internal class X86TypeParser : ITypeParser
                         continue;
                     }
 
-                    if (!typeMethods.TryGetValue(target, out _))
+                    if (!typeMethods.TryGetValue(target, out var resolvedMethod))
                     {
                         Log.Global?.LogSkippingCall((ulong)target, $"it's not part of the {targetType.FullName}");
                         continue;
@@ -134,7 +115,8 @@ internal class X86TypeParser : ITypeParser
                         continue;
                     }
 
-                    ret.Add(fieldIndex, parameter);
+                    // Store both the parameter and the resolved Add* method for name extraction
+                    ret.Add(fieldIndex, (parameter, resolvedMethod));
                     seenParameterIndices.Add(paramIndex);
                     fieldIndex++;
                     cur += 1;
@@ -150,7 +132,7 @@ internal class X86TypeParser : ITypeParser
         if (call.EdxValue == null) return 0;
 
         var edxValue = call.EdxValue;
-        return edxValue.StartsWith("0x")
+        return edxValue.StartsWith("0x", StringComparison.Ordinal)
             ? int.Parse(edxValue[2..], NumberStyles.HexNumber)
             : int.Parse(edxValue, NumberStyles.Integer);
     }
