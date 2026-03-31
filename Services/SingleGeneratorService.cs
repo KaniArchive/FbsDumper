@@ -6,6 +6,13 @@ namespace FbsDumper.Services;
 
 public sealed class SingleGeneratorService(FileGenerationContext generation) : SchemaGeneratorServiceBase(generation)
 {
+    private string OutputPath =>
+        Directory.Exists(Generation.OutputPath)
+            ? Path.Combine(
+                Generation.OutputPath,
+                BuildSchemaFileName(string.Empty, Generation.CustomNamespace))
+            : Generation.OutputPath;
+
     protected override void GenerateCore(SchemaWriteContext schema)
     {
         if (!schema.Lookup.HasDuplicates)
@@ -16,16 +23,16 @@ public sealed class SingleGeneratorService(FileGenerationContext generation) : S
 
         var files = Blocks.Build(schema)
             .AsValueEnumerable()
-            .Select(block => CreateFile(Generation.OutputPath, block, [], true))
+            .Select(block => CreateFile(OutputPath, block, [], true))
             .ToArray();
         var includes = BuildIncludes(schema.Schema.FlatTables, schema.Lookup);
-        WriteSchemaFile(Generation.OutputPath, files, includes, schema);
+        WriteSchemaFile(OutputPath, files, includes, schema);
     }
 
     protected override string GetSeparateEnumsPath() =>
         Path.Combine(
-            Path.GetDirectoryName(Generation.OutputPath) ?? ".",
-            Path.GetFileNameWithoutExtension(Generation.OutputPath) + ".enums.fbs");
+            Path.GetDirectoryName(OutputPath) ?? ".",
+            Path.GetFileNameWithoutExtension(OutputPath) + ".enums.fbs");
 
     private FileWriteContext BuildFile(SchemaWriteContext schema)
     {
@@ -36,7 +43,7 @@ public sealed class SingleGeneratorService(FileGenerationContext generation) : S
         var includes = BuildIncludes(schema.Schema.FlatTables, schema.Lookup);
 
         return CreateFile(
-            Generation.OutputPath,
+            OutputPath,
             new SchemaBlock(
                 ns,
                 schema.Schema.FlatTables,
