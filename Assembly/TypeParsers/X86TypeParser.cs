@@ -7,12 +7,12 @@ using ZLinq;
 
 namespace FbsDumper.Assembly.TypeParsers;
 
-internal class X86TypeParser : ITypeParser
+internal class X86TypeParser : FieldParser
 {
-    public void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
+    public override void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
         TypeDef targetType)
     {
-        Dictionary<int, Parameter> dict;
+        Dictionary<int, (Parameter param, MethodDef method)> dict;
 
         try
         {
@@ -20,38 +20,20 @@ internal class X86TypeParser : ITypeParser
         }
         catch (Exception)
         {
-            FieldParser.ForceProcessFields(context, ref ret, createMethod, targetType);
+            ForceProcessFields(context, ref ret, createMethod, targetType);
             return;
         }
 
         dict = dict.AsValueEnumerable().OrderBy(t => t.Key).ToDictionary();
 
-        foreach (var (key, param) in dict)
-        {
-            var fieldType = TypeHelper.ResolveTypeDef(param.Type);
-            var fieldTypeSig = param.Type;
-            var fieldName = param.Name;
-
-            fieldTypeSig = FieldParser.ExtractGeneric(fieldTypeSig, ref fieldType);
-
-            FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), TypeHelper.CleanFieldName(fieldName))
-            {
-                Offset = key
-            };
-
-            fieldType = FieldParser.ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeSig);
-            fieldType = FieldParser.SetGeneric(fieldTypeSig, fieldType, field);
-
-            FieldParser.SaveEnum(context, field, fieldType);
-
-            ret.Fields.Add(field);
-        }
+        foreach (var (key, (param, method)) in dict)
+            AddField(context, ref ret, targetType, key, param, method.Name.String);
     }
 
-    private static Dictionary<int, Parameter> ParseCallsForCreateMethod(ParserOptionsContext context,
-        MethodDef createMethod, TypeDef targetType)
+    private static Dictionary<int, (Parameter param, MethodDef method)> ParseCallsForCreateMethod(
+        ParserOptionsContext context, MethodDef createMethod, TypeDef targetType)
     {
-        Dictionary<int, Parameter> ret = [];
+        Dictionary<int, (Parameter, MethodDef)> ret = [];
         Dictionary<long, MethodDef> typeMethods = [];
         HashSet<int> seenParameterIndices = [];
 
@@ -106,7 +88,7 @@ internal class X86TypeParser : ITypeParser
                         continue;
                     }
 
-                    if (!typeMethods.TryGetValue(target, out _))
+                    if (!typeMethods.TryGetValue(target, out var resolvedMethod))
                     {
                         Log.Global?.LogSkippingCall((ulong)target, $"it's not part of the {targetType.FullName}");
                         continue;
@@ -133,7 +115,8 @@ internal class X86TypeParser : ITypeParser
                         continue;
                     }
 
-                    ret.Add(fieldIndex, parameter);
+                    // Store both the parameter and the resolved Add* method for name extraction
+                    ret.Add(fieldIndex, (parameter, resolvedMethod));
                     seenParameterIndices.Add(paramIndex);
                     fieldIndex++;
                     cur += 1;

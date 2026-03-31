@@ -7,34 +7,16 @@ using ZLinq;
 
 namespace FbsDumper.Assembly.TypeParsers;
 
-internal class ArmTypeParser : ITypeParser
+internal class ArmTypeParser : FieldParser
 {
-    public void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
+    public override void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
         TypeDef targetType)
     {
         var dict = ParseCallsForCreateMethod(context, createMethod, targetType);
         dict = dict.AsValueEnumerable().OrderBy(t => t.Key).ToDictionary();
 
         foreach (var (key, methodDef) in dict)
-        {
-            var param = methodDef.Parameters[1];
-            var fieldType = TypeHelper.ResolveTypeDef(param.Type);
-            var fieldTypeSig = param.Type;
-            var fieldName = param.Name;
-
-            fieldTypeSig = FieldParser.ExtractGeneric(fieldTypeSig, ref fieldType);
-
-            FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), TypeHelper.CleanFieldName(fieldName))
-            {
-                Offset = key
-            };
-
-            fieldType = FieldParser.ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeSig);
-            fieldType = FieldParser.SetGeneric(fieldTypeSig, fieldType, field);
-
-            FieldParser.SaveEnum(context, field, fieldType);
-            ret.Fields.Add(field);
-        }
+            AddField(context, ref ret, targetType, key, methodDef.Parameters[1], methodDef.Name.String);
     }
 
     private static Dictionary<int, MethodDef> ParseCallsForCreateMethod(ParserOptionsContext context,

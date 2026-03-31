@@ -4,75 +4,98 @@ using ZLinq;
 
 namespace FbsDumper.Assembly;
 
-public static class FieldParser
+internal abstract class FieldParser : ITypeParser
 {
-    public static TypeDef ProcessOffsets(TypeDef targetType, TypeDef fieldType,
+    public abstract void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
+        TypeDef targetType);
+
+    protected static void AddField(ParserOptionsContext context, ref FlatTable ret, TypeDef targetType, int offset,
+        Parameter param, string? addMethodName = null)
+    {
+        var fieldType = TypeHelper.ResolveTypeDef(param.Type);
+        var fieldTypeSig = param.Type;
+
+        var fieldName = addMethodName != null && addMethodName.StartsWith("Add", StringComparison.Ordinal)
+            ? addMethodName[3..]
+            : UTF8String.ToSystemString(param.Name);
+
+        fieldTypeSig = ExtractGeneric(fieldTypeSig, ref fieldType);
+
+        FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), TypeHelper.CleanFieldName(fieldName))
+        {
+            Offset = offset
+        };
+
+        fieldType = ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeSig);
+        fieldType = SetGeneric(fieldTypeSig, fieldType, field);
+
+        SaveEnum(context, field, fieldType);
+        ret.Fields.Add(field);
+    }
+
+    internal static TypeDef ProcessOffsets(TypeDef targetType, TypeDef fieldType,
         FlatField field, string fieldName, ref TypeSig fieldTypeSig)
     {
         switch (fieldType.FullName)
         {
             case "FlatBuffers.StringOffset":
                 field.Type = TypeHelper.GetStringType(targetType);
-                field.Name = fieldName.EndsWith("Offset", StringComparison.Ordinal)
-                    ? new string([.. fieldName.SkipLast("Offset".Length)])
-                    : fieldName;
-                field.Name = TypeHelper.CleanFieldName(field.Name);
+                field.Name = GetNames(fieldName).First();
                 break;
 
             case "FlatBuffers.VectorOffset":
             case "FlatBuffers.Offset":
-                var newFieldName = fieldName.EndsWith("Offset", StringComparison.Ordinal)
-                    ? new string([.. fieldName.SkipLast("Offset".Length)])
-                    : fieldName;
-                newFieldName = TypeHelper.CleanFieldName(newFieldName);
-
-                var method = targetType.Methods
-                    .AsValueEnumerable()
-                    .Where(m => string.Equals(m.Name.String, newFieldName, StringComparison.CurrentCultureIgnoreCase))
-                    .OrderByDescending(m => m.IsPublic)
-                    .First();
-
-                var typeDefinition = TypeHelper.ResolveTypeDef(method.ReturnType);
+                var accessor = FindAccessor(targetType, fieldName);
 
                 field.IsArray = fieldType.FullName == "FlatBuffers.VectorOffset";
 
-                fieldType = typeDefinition;
-                fieldTypeSig = method.ReturnType;
+                if (accessor != null)
+                {
+                    var resolvedType = TypeHelper.ResolveTypeDef(accessor.ReturnType);
+                    fieldType = resolvedType;
+                    fieldTypeSig = accessor.ReturnType;
+                    field.Type = TypeHelper.ToFlatTypeInfo(resolvedType);
+                    field.Name = accessor.Name;
+                    break;
+                }
 
-                field.Type = TypeHelper.ToFlatTypeInfo(typeDefinition);
-                field.Name = method.Name;
+                if (!field.IsArray) break;
+
+                var vectorTypeSig = FindCreateVectorType(targetType, fieldName);
+                if (vectorTypeSig == null) break;
+
+                fieldType = TypeHelper.ResolveTypeDef(vectorTypeSig);
+                fieldTypeSig = vectorTypeSig;
+                field.Type = TypeHelper.ToFlatTypeInfo(vectorTypeSig);
+                field.Name = GetNames(fieldName).Last();
                 break;
         }
 
         return fieldType;
     }
 
-    public static TypeSig ProcessOffsetsByMethods(TypeDef targetType, TypeDef fieldType, FlatField field,
+    internal static TypeSig ProcessOffsetsByMethods(TypeDef targetType, TypeDef fieldType, FlatField field,
         string fieldName, TypeSig fieldTypeSig, MethodDef method)
     {
         switch (fieldType.FullName)
         {
             case "FlatBuffers.StringOffset":
                 field.Type = TypeHelper.GetStringType(targetType);
-                field.Name = fieldName.EndsWith("Offset", StringComparison.Ordinal)
-                    ? new string([.. fieldName.SkipLast("Offset".Length)])
-                    : fieldName;
+                field.Name = GetNames(fieldName).First();
                 break;
             case "FlatBuffers.VectorOffset":
             case "FlatBuffers.Offset":
-                var newFieldName = fieldName.EndsWith("Offset", StringComparison.Ordinal)
-                    ? new string([.. fieldName.SkipLast("Offset".Length)])
-                    : fieldName;
-                newFieldName = TypeHelper.CleanFieldName(newFieldName);
-
                 if (fieldType.FullName == "FlatBuffers.VectorOffset")
                 {
-                    var startMethod = targetType.Methods.First(m => m.Name == $"Start{newFieldName}Vector");
-                    fieldType = TypeHelper.ResolveTypeDef(startMethod.Parameters[1].Type);
+                    var vectorTypeSig = GetVectorType(targetType, fieldName);
+                    fieldType = TypeHelper.ResolveTypeDef(vectorTypeSig);
+                    fieldTypeSig = vectorTypeSig;
                     field.IsArray = true;
                 }
 
-                fieldTypeSig = fieldType.ToTypeSig();
+                if (!field.IsArray)
+                    fieldTypeSig = fieldType.ToTypeSig();
+
                 field.Type = TypeHelper.ToFlatTypeInfo(fieldType);
                 field.Name = method.Name;
 
@@ -90,7 +113,16 @@ public static class FieldParser
         {
             var fieldType = TypeHelper.ResolveTypeDef(param.Type);
             var fieldTypeSig = param.Type;
-            var fieldName = param.Name;
+
+            var addMethod = targetType.Methods.FirstOrDefault(m =>
+                m.IsPublic && m.IsStatic &&
+                m.Name.String.StartsWith("Add", StringComparison.Ordinal) &&
+                m.Parameters.Count == 2 &&
+                m.Parameters[1].Name == param.Name);
+
+            var fieldName = addMethod != null
+                ? addMethod.Name.String[3..]
+                : UTF8String.ToSystemString(param.Name);
 
             fieldTypeSig = ExtractGeneric(fieldTypeSig, ref fieldType);
 
@@ -108,7 +140,7 @@ public static class FieldParser
         }
     }
 
-    public static void ProcessFieldsByMethods(ref FlatTable ret, TypeDef targetType)
+    internal static void ProcessFieldsByMethods(ref FlatTable ret, TypeDef targetType)
     {
         foreach (var method in targetType.Methods.Where(m =>
                      m.IsPublic && m.IsStatic && m.Name.StartsWith("Add", StringComparison.Ordinal) &&
@@ -118,7 +150,10 @@ public static class FieldParser
 
             var fieldType = TypeHelper.ResolveTypeDef(param.Type);
             var fieldTypeSig = param.Type;
-            var fieldName = param.Name;
+
+            var fieldName = method.Name.String.StartsWith("Add", StringComparison.Ordinal)
+                ? method.Name.String[3..]
+                : UTF8String.ToSystemString(param.Name);
 
             fieldTypeSig = ExtractGeneric(fieldTypeSig, ref fieldType);
             FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), fieldName);
@@ -131,7 +166,7 @@ public static class FieldParser
         }
     }
 
-    public static TypeSig ExtractGeneric(TypeSig fieldTypeSig, ref TypeDef fieldType)
+    internal static TypeSig ExtractGeneric(TypeSig fieldTypeSig, ref TypeDef fieldType)
     {
         if (fieldTypeSig is not GenericInstSig genericInstance) return fieldTypeSig;
         fieldType = TypeHelper.ResolveTypeDef(genericInstance.GenericArguments.First());
@@ -140,7 +175,7 @@ public static class FieldParser
         return fieldTypeSig;
     }
 
-    public static TypeDef SetGeneric(TypeSig fieldTypeSig, TypeDef fieldType, FlatField field)
+    internal static TypeDef SetGeneric(TypeSig fieldTypeSig, TypeDef fieldType, FlatField field)
     {
         if (!fieldTypeSig.IsGenericInstanceType) return fieldType;
 
@@ -155,5 +190,56 @@ public static class FieldParser
     {
         if (field.Type.IsEnum && !context.FlatEnumsToAdd.Contains(fieldType))
             context.FlatEnumsToAdd.Add(fieldType);
+    }
+
+    private static MethodDef? FindAccessor(TypeDef targetType, string fieldName) =>
+        GetNames(fieldName)
+            .AsValueEnumerable()
+            .Select(candidate => targetType.Methods.AsValueEnumerable()
+                .Where(m => string.Equals(m.Name.String, candidate, StringComparison.OrdinalIgnoreCase) &&
+                            !m.Name.String.StartsWith("Add", StringComparison.Ordinal))
+                .OrderByDescending(m => m.IsPublic)
+                .FirstOrDefault())
+            .OfType<MethodDef>()
+            .FirstOrDefault();
+
+    private static TypeSig GetVectorType(TypeDef targetType, string fieldName)
+    {
+        var accessor = FindAccessor(targetType, fieldName);
+        if (accessor != null)
+            return accessor.ReturnType;
+
+        var createTypeSig = FindCreateVectorType(targetType, fieldName);
+        return createTypeSig ??
+               throw new InvalidOperationException($"Failed to resolve vector element type for '{fieldName}'.");
+    }
+
+    private static TypeSig? FindCreateVectorType(TypeDef targetType, string fieldName)
+    {
+        foreach (var candidate in GetNames(fieldName))
+        {
+            var createMethod = targetType.Methods.FirstOrDefault(m => m.Name == $"Create{candidate}Vector");
+            if (createMethod == null || createMethod.Parameters.Count < 2)
+                continue;
+
+            var dataType = createMethod.Parameters[1].Type;
+            if (dataType.Next is not null)
+                return dataType.Next;
+        }
+
+        return null;
+    }
+
+    private static string[] GetNames(string fieldName)
+    {
+        var originalName = TypeHelper.CleanFieldName(fieldName);
+
+        if (!fieldName.EndsWith("Offset", StringComparison.Ordinal))
+            return [originalName];
+
+        var strippedName = TypeHelper.CleanFieldName(new string([.. fieldName.SkipLast("Offset".Length)]));
+        return string.Equals(strippedName, originalName, StringComparison.Ordinal)
+            ? [originalName]
+            : [strippedName, originalName];
     }
 }
