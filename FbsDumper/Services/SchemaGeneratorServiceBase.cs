@@ -107,7 +107,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
             Log.Info($"Written: {Path.GetFileName(filePath)}");
     }
 
-    private static void WriteIncludes<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
+    protected virtual void WriteIncludes<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
         IReadOnlyList<string> includes)
         where TBufferWriter : IBufferWriter<byte>
     {
@@ -118,7 +118,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
             writer.AppendLine();
     }
 
-    private void WriteSchema<TBufferWriter>(
+    protected virtual void WriteSchema<TBufferWriter>(
         ref Utf8StringWriter<TBufferWriter> writer,
         FileWriteContext file,
         SchemaWriteContext schema)
@@ -140,7 +140,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         }
     }
 
-    private void WriteTable<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatTable table,
+    protected virtual void WriteTable<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatTable table,
         FileWriteContext file, SchemaWriteContext schema)
         where TBufferWriter : IBufferWriter<byte>
     {
@@ -154,7 +154,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         writer.AppendLiteral("}\n");
     }
 
-    private static void WriteEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatEnum fEnum)
+    protected virtual void WriteEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatEnum fEnum)
         where TBufferWriter : IBufferWriter<byte>
     {
         var enumTypeName = TypeHelper.SystemToStringType(fEnum.Type);
