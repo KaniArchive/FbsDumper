@@ -51,7 +51,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         File.WriteAllBytes(outputPath, buffer.ToArray());
     }
 
-    protected string ResolveFieldType(string typeName, FieldWriteContext field)
+    protected virtual string ResolveFieldType(string typeName, FieldWriteContext field)
     {
         if (!field.File.QualifyTypes || !field.Schema.Lookup.HasType(typeName))
             return typeName;

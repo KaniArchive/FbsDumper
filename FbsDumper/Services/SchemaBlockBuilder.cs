@@ -12,7 +12,7 @@ internal sealed class SchemaBlockBuilder(FileGenerationContext gen)
 
         foreach (var ns in schema.Schema.FlatTables.AsValueEnumerable().Select(t => t.OriginalNamespace))
             namespaces.Add(ns);
-        
+
         if (gen.EnumOut == EnumOut.Inline)
             foreach (var ns in schema.Schema.FlatEnums.AsValueEnumerable().Select(e => e.OriginalNamespace))
                 namespaces.Add(ns);

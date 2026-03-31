@@ -105,13 +105,7 @@ internal static class TypeHelper
     public static FlatTable TypeToTable(ParserOptionsContext context, ITypeParser typeParser, TypeDef targetType)
     {
         var typeName = targetType.Name.String ?? string.Empty;
-        var ret = new FlatTable(typeName, targetType.Namespace.String ?? string.Empty)
-        {
-            HasEncryption = targetType.Fields.Any(f =>
-                f.IsPublic && f.IsStatic &&
-                f.Name == "TableKey" &&
-                f.FieldType.FullName == "System.Byte[]")
-        };
+        var ret = new FlatTable(typeName, targetType.Namespace.String ?? string.Empty);
 
         var createMethod = targetType.Methods.FirstOrDefault(m =>
             m.Name == $"Create{typeName}" &&
@@ -123,18 +117,28 @@ internal static class TypeHelper
         if (context.NoAsmProcessing)
         {
             if (createMethod == null)
-                return context.Force
+            {
+                var result = context.Force
                     ? ProcessWithForceMethod(ref ret, targetType)
                     : ProcessWithoutCreateMethod(ret, targetType);
+                context.Extension.OnTableBuilt?.Invoke(result, targetType);
+                return result;
+            }
 
             FieldParser.ForceProcessFields(context, ref ret, createMethod, targetType);
+            context.Extension.OnTableBuilt?.Invoke(ret, targetType);
             return ret;
         }
 
         if (createMethod == null)
-            return ProcessWithoutCreateMethod(ret, targetType);
+        {
+            var result = ProcessWithoutCreateMethod(ret, targetType);
+            context.Extension.OnTableBuilt?.Invoke(result, targetType);
+            return result;
+        }
 
         typeParser.ProcessFields(context, ref ret, createMethod, targetType);
+        context.Extension.OnTableBuilt?.Invoke(ret, targetType);
         return ret;
     }
 
@@ -151,7 +155,7 @@ internal static class TypeHelper
         return ret;
     }
 
-    public static FlatEnum TypeToEnum(TypeDef typeDef)
+    public static FlatEnum TypeToEnum(ParserOptionsContext context, TypeDef typeDef)
     {
         var retType = FlatTypeInfo.FromTypeSig(typeDef.GetEnumUnderlyingType());
         var ret = new FlatEnum(retType, typeDef.Name.String ?? string.Empty, typeDef.Namespace.String ?? string.Empty);
@@ -163,6 +167,7 @@ internal static class TypeHelper
             ret.Fields.Add(enumField);
         }
 
+        context.Extension.OnEnumBuilt?.Invoke(ret, typeDef);
         return ret;
     }
 

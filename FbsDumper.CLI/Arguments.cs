@@ -13,6 +13,7 @@ public static class Args
     /// <param name="outputFile">-o, Specifies the output file or directory (when using --split).</param>
     /// <param name="namespace">-n, Specifies the flatdata namespace</param>
     /// <param name="split">-sp, Split output into one .fbs file per IL namespace, organized in the output directory.</param>
+    /// <param name="extensions">-ext, Extensions to enable (e.g. --extensions BlueArchive). If not specified, no extensions are run.</param>
     /// <param name="enumOut">-eo, How to handle enums: Inline (default), Separate (single enums.fbs), Omit (skip enums).</param>
     /// <param name="forceSnakeCase">-s, Force snake case.</param>
     /// <param name="force">-f, Force processing using Add methods when no Create method exists.</param>
@@ -25,6 +26,7 @@ public static class Args
         string? namespaceToLookFor = null,
         string outputFile = "",
         string @namespace = "",
+        string[]? extensions = null,
         bool split = false,
         EnumOut enumOut = EnumOut.Inline,
         bool forceSnakeCase = false,
@@ -32,7 +34,7 @@ public static class Args
         bool skipDuplicates = false,
         bool verbose = false,
         bool suppressWarnings = false) =>
-        Parser.Execute(dummyDll, gameAssembly, namespaceToLookFor, outputFile, @namespace, split, enumOut,
+        Parser.Execute(dummyDll, gameAssembly, namespaceToLookFor, outputFile, @namespace, extensions, split, enumOut,
             forceSnakeCase, force, skipDuplicates, verbose,
             suppressWarnings);
 }

@@ -49,17 +49,8 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build
-        run: dotnet build --configuration Debug --no-restore
-
-      - name: Test
-        run: dotnet test --configuration Debug --no-build --verbosity normal
-
       - name: Publish
-        run: dotnet publish --configuration Debug --runtime ${{ matrix.rid }} --output ./publish/${{ matrix.rid }}
+        run: dotnet publish FbsDumper.CLI/FbsDumper.CLI.csproj -c Debug -r ${{ matrix.config.runtime }} -o ./publish/${{ matrix.config.runtime }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

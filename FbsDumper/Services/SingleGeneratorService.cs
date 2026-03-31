@@ -4,7 +4,7 @@ using ZLinq;
 
 namespace FbsDumper.Services;
 
-public sealed class SingleGeneratorService(FileGenerationContext generation) : SchemaGeneratorServiceBase(generation)
+public class SingleGeneratorService(FileGenerationContext generation) : SchemaGeneratorServiceBase(generation)
 {
     private string OutputPath =>
         Directory.Exists(Generation.OutputPath)

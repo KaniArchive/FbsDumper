@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PublishAot>true</PublishAot>
+
+        <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+        <NoWarn>$(NoWarn);IL2104;IL3053</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ConsoleAppFramework" Version="5.7.13">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\FbsDumper.Extensions\BlueArchive\FbsDumper.Extensions.BlueArchive.csproj" />
+        <ProjectReference Include="..\FbsDumper\FbsDumper.csproj"/>
+    </ItemGroup>
+
+    <Target Name="RenameExecutable" AfterTargets="Publish">
+        <PropertyGroup>
+            <ExeExt Condition="'$(OS)' == 'Windows_NT'">.exe</ExeExt>
+            <ExeExt Condition="'$(OS)' != 'Windows_NT'"></ExeExt>
+            <OldExe>$(PublishDir)FbsDumper.CLI$(ExeExt)</OldExe>
+            <NewExe>$(PublishDir)FbsDumper$(ExeExt)</NewExe>
+        </PropertyGroup>
+
+        <Move SourceFiles="$(OldExe)" DestinationFiles="$(NewExe)" OverwriteReadOnlyFiles="true" Condition="Exists('$(OldExe)')"/>
+        <Delete Files="$(OldExe)" Condition="Exists('$(OldExe)')"/>
+    </Target>
+
+</Project>

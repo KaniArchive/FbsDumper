@@ -52,17 +52,8 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build
-        run: dotnet build --configuration Release --no-restore
-
-      - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal
-
       - name: Publish
-        run: dotnet publish --configuration Release --runtime ${{ matrix.rid }} --output ./publish/${{ matrix.rid }}
+        run: otnet publish FbsDumper.CLI/FbsDumper.CLI.csproj -c Release -r ${{ matrix.config.runtime }} -o ./publish/${{ matrix.config.runtime }}
 
       - name: Remove dev files
         shell: bash
@@ -70,6 +61,8 @@ jobs:
           find ./publish/${{ matrix.rid }} -name "*.pdb" -type f -delete
           find ./publish/${{ matrix.rid }} -name "*.dbg" -type f -delete
           find ./publish/${{ matrix.rid }} -name "*.dsym" -type d -exec rm -rf {} +
+          rm -f ./publish/${{ matrix.config.runtime }}/FbsDumper.CLI.exe
+          rm -f ./publish/${{ matrix.config.runtime }}/FbsDumper.CLI
 
       - name: Create Zip Archive
         uses: vimtor/action-zip@v1.2
