@@ -65,7 +65,7 @@ internal static class TypeHelper
     public static FlatTypeInfo GetStringType(TypeDef targetType) =>
         FlatTypeInfo.FromTypeSig(targetType.Module.CorLibTypes.String);
 
-    public static List<TypeDef> GetAllFlatBufferTypes(ModuleDef module, string baseTypeName, string? namespaceToLookFor,
+    public static List<TypeDef> GetAllFlatBufferTypes(ModuleDef? module, string baseTypeName, string? namespaceToLookFor,
         bool skipDuplicates)
     {
         List<TypeDef> ret =

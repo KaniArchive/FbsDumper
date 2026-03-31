@@ -23,7 +23,7 @@ public static class Args
         string dummyDll,
         string gameAssembly = "",
         string? namespaceToLookFor = null,
-        string outputFile = "BlueArchive.fbs",
+        string outputFile = "",
         string @namespace = "",
         bool split = false,
         EnumOut enumOut = EnumOut.Inline,

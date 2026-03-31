@@ -19,27 +19,67 @@ internal static class SchemaBuilder
 
         Log.Info("Reading game assemblies...");
 
-        var blueArchiveDllPath = Path.Combine(dummyDllPath, "BlueArchive.dll");
-        if (!File.Exists(blueArchiveDllPath))
+        var candidates = Directory.GetFiles(dummyDllPath, "*.dll")
+            .AsValueEnumerable()
+            .Where(dll => !Path.GetFileName(dll).Equals("FlatBuffers.dll", StringComparison.OrdinalIgnoreCase))
+            .Select(dll =>
+            {
+                try
+                {
+                    return ModuleDefMD.Load(dll, moduleContext);
+                }
+                catch
+                {
+                    return null;
+                }
+            })
+            .Where(mod => mod != null)
+            .Where(mod => mod != null && mod.GetTypes().AsValueEnumerable().Any(t =>
+                t.HasInterfaces &&
+                t.Interfaces.AsValueEnumerable().Any(i => i.Interface?.FullName == FlatBaseType)))
+            .ToList();
+
+        switch (candidates.Count)
         {
-            Log.Global.LogFileNotFound("BlueArchive.dll", dummyDllPath);
-            Log.Shutdown();
-            Environment.Exit(1);
+            case 0:
+                Log.Error($"No DLL implementing {FlatBaseType} found in '{dummyDllPath}'.");
+                Log.Shutdown();
+                Environment.Exit(1);
+                break;
+            case > 1 when string.IsNullOrEmpty(context.NamespaceToLookFor):
+            {
+                Log.Warning("Multiple DLLs contain FlatBuffer types:");
+                foreach (var c in candidates)
+                    Log.Warning($"  {Path.GetFileName(c?.Location)}");
+                Log.Error("Pass --namespace-to-look-for (-nl) to disambiguate.");
+                Log.Shutdown();
+                Environment.Exit(1);
+                break;
+            }
         }
 
-        using var asm = ModuleDefMD.Load(blueArchiveDllPath, moduleContext);
+        var asm = candidates.Count == 1
+            ? candidates[0]
+            : candidates.AsValueEnumerable().First(c => c != null && c.GetTypes().AsValueEnumerable().Any(t =>
+                string.Equals(t.Namespace.String, context.NamespaceToLookFor, StringComparison.Ordinal)));
 
-        var flatBuffersDllPath = Path.Combine(dummyDllPath, "FlatBuffers.dll");
-        if (!File.Exists(flatBuffersDllPath))
+        foreach (var c in candidates.Where(c => c != asm))
+            c?.Dispose();
+
+        if (!context.NoAsmProcessing)
         {
-            Log.Global.LogFileNotFound("FlatBuffers.dll", dummyDllPath);
-            Log.Shutdown();
-            Environment.Exit(1);
+            var flatBuffersDllPath = Path.Combine(dummyDllPath, "FlatBuffers.dll");
+            if (!File.Exists(flatBuffersDllPath))
+            {
+                Log.Error(
+                    $"FlatBuffers.dll not found in '{dummyDllPath}'. Required for assembly analysis. Omit --game-assembly (-a) to skip.");
+                Log.Shutdown();
+                Environment.Exit(1);
+            }
+
+            using var asmFbs = ModuleDefMD.Load(flatBuffersDllPath, moduleContext);
+            context.FlatBufferBuilder = new FlatBuilder(asmFbs);
         }
-
-        using var asmFbs = ModuleDefMD.Load(flatBuffersDllPath, moduleContext);
-
-        context.FlatBufferBuilder = new FlatBuilder(asmFbs);
 
         var architecture = context.NoAsmProcessing
             ? Architecture.X86
@@ -79,6 +119,7 @@ internal static class SchemaBuilder
             schema.FlatEnums.AddRange(distinctEnums);
         }
 
+        asm?.Dispose();
         return schema;
     }
 }

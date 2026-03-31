@@ -14,6 +14,9 @@ public static class Parser
         if (verbose) Log.EnableDebugLogging();
         Log.SuppressWarnings = suppressWarnings;
 
+        if (string.IsNullOrEmpty(outputFile))
+            outputFile = "tables.fbs";
+
         var context = new ParserOptionsContext(
             dummyDll,
             gameAssembly,
@@ -38,6 +41,7 @@ public static class Parser
             context.EnumOut,
             context.ForceSnakeCase,
             context.Split);
+
         FileGeneratorService.Write(schema, generation);
 
         Log.Info("Done.");
