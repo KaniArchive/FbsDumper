@@ -1,5 +1,5 @@
-﻿using FbsDumper.Instructions;
-using Mono.Cecil;
+﻿using dnlib.DotNet;
+using FbsDumper.Instructions;
 using ZLinq;
 
 namespace FbsDumper.Assembly;
@@ -7,12 +7,13 @@ namespace FbsDumper.Assembly;
 public class FlatBuilder
 {
     public readonly long EndObject;
-    public readonly Dictionary<long, MethodDefinition> Methods;
+    public readonly Dictionary<long, MethodDef> Methods;
     public readonly long StartObject;
 
-    public FlatBuilder(ModuleDefinition flatBuffersDllModule)
+    public FlatBuilder(ModuleDef flatBuffersDllModule)
     {
-        var flatBufferBuilderType = flatBuffersDllModule.GetType("FlatBuffers.FlatBufferBuilder");
+        var flatBufferBuilderType = flatBuffersDllModule.Find("FlatBuffers.FlatBufferBuilder", false)
+                                    ?? throw new InvalidOperationException("Failed to find FlatBufferBuilder.");
 
         var methodsWithRva = flatBufferBuilderType.Methods
             .AsValueEnumerable()

@@ -1,18 +1,17 @@
 using System.Globalization;
+using dnlib.DotNet;
 using FbsDumper.CLI;
 using FbsDumper.Helpers;
 using FbsDumper.Instructions;
-using Mono.Cecil;
-using Mono.Cecil.Rocks;
 using ZLinq;
 
 namespace FbsDumper.Assembly.TypeParsers;
 
 internal class X86TypeParser : ITypeParser
 {
-    public void ProcessFields(ref FlatTable ret, MethodDefinition createMethod, TypeDefinition targetType)
+    public void ProcessFields(ref FlatTable ret, MethodDef createMethod, TypeDef targetType)
     {
-        Dictionary<int, ParameterDefinition> dict;
+        Dictionary<int, Parameter> dict;
 
         try
         {
@@ -26,22 +25,21 @@ internal class X86TypeParser : ITypeParser
 
         dict = dict.AsValueEnumerable().OrderBy(t => t.Key).ToDictionary();
 
-        foreach (var kvp in dict)
+        foreach (var (key, param) in dict)
         {
-            var param = kvp.Value;
-            var fieldType = param.ParameterType.Resolve();
-            var fieldTypeRef = param.ParameterType;
+            var fieldType = TypeHelper.ResolveTypeDef(param.Type);
+            var fieldTypeSig = param.Type;
             var fieldName = param.Name;
 
-            fieldTypeRef = FieldParser.ExtractGeneric(fieldTypeRef, ref fieldType);
+            fieldTypeSig = FieldParser.ExtractGeneric(fieldTypeSig, ref fieldType);
 
-            FlatField field = new(fieldType, TypeHelper.CleanFieldName(fieldName))
+            FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), TypeHelper.CleanFieldName(fieldName))
             {
-                Offset = kvp.Key
+                Offset = key
             };
 
-            fieldType = FieldParser.ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeRef);
-            fieldType = FieldParser.SetGeneric(fieldTypeRef, fieldType, field);
+            fieldType = FieldParser.ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeSig);
+            fieldType = FieldParser.SetGeneric(fieldTypeSig, fieldType, field);
 
             FieldParser.SaveEnum(field, fieldType);
 
@@ -49,14 +47,13 @@ internal class X86TypeParser : ITypeParser
         }
     }
 
-    private static Dictionary<int, ParameterDefinition> ParseCallsForCreateMethod(MethodDefinition createMethod,
-        TypeDefinition targetType)
+    private static Dictionary<int, Parameter> ParseCallsForCreateMethod(MethodDef createMethod, TypeDef targetType)
     {
-        Dictionary<int, ParameterDefinition> ret = [];
-        Dictionary<long, MethodDefinition> typeMethods = [];
+        Dictionary<int, Parameter> ret = [];
+        Dictionary<long, MethodDef> typeMethods = [];
         HashSet<int> seenParameterIndices = [];
 
-        foreach (var method in createMethod.Parameters[0].ParameterType.Resolve().GetMethods())
+        foreach (var method in TypeHelper.ResolveTypeDef(createMethod.Parameters[0].Type).Methods)
         {
             var rva = InstructionsParser.GetMethodRva(method);
             typeMethods.Add(rva, method);
@@ -150,7 +147,7 @@ internal class X86TypeParser : ITypeParser
         if (call.EdxValue == null) return 0;
 
         var edxValue = call.EdxValue;
-        return edxValue.StartsWith("0x")
+        return edxValue.StartsWith("0x", StringComparison.Ordinal)
             ? int.Parse(edxValue[2..], NumberStyles.HexNumber)
             : int.Parse(edxValue, NumberStyles.Integer);
     }

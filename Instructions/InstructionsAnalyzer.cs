@@ -22,8 +22,3 @@ internal abstract class InstructionsAnalyzer
         public string? Target;
     }
 }
-
-internal interface IInstructionAnalyzer
-{
-    List<InstructionsAnalyzer.CallInfo> AnalyzeCalls(List<InstructionWithAddress> instructions);
-}

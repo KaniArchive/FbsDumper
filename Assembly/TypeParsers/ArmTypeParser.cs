@@ -1,50 +1,47 @@
 using System.Globalization;
+using dnlib.DotNet;
 using FbsDumper.CLI;
 using FbsDumper.Helpers;
 using FbsDumper.Instructions;
-using Mono.Cecil;
-using Mono.Cecil.Rocks;
 using ZLinq;
 
 namespace FbsDumper.Assembly.TypeParsers;
 
 internal class ArmTypeParser : ITypeParser
 {
-    public void ProcessFields(ref FlatTable ret, MethodDefinition createMethod, TypeDefinition targetType)
+    public void ProcessFields(ref FlatTable ret, MethodDef createMethod, TypeDef targetType)
     {
         var dict = ParseCallsForCreateMethod(createMethod, targetType);
         dict = dict.AsValueEnumerable().OrderBy(t => t.Key).ToDictionary();
 
-        foreach (var kvp in dict)
+        foreach (var (key, methodDef) in dict)
         {
-            var methodDef = kvp.Value;
             var param = methodDef.Parameters[1];
-            var fieldType = param.ParameterType.Resolve();
-            var fieldTypeRef = param.ParameterType;
+            var fieldType = TypeHelper.ResolveTypeDef(param.Type);
+            var fieldTypeSig = param.Type;
             var fieldName = param.Name;
 
-            fieldTypeRef = FieldParser.ExtractGeneric(fieldTypeRef, ref fieldType);
+            fieldTypeSig = FieldParser.ExtractGeneric(fieldTypeSig, ref fieldType);
 
-            FlatField field = new(fieldType, TypeHelper.CleanFieldName(fieldName))
+            FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), TypeHelper.CleanFieldName(fieldName))
             {
-                Offset = kvp.Key
+                Offset = key
             };
 
-            fieldType = FieldParser.ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeRef);
-            fieldType = FieldParser.SetGeneric(fieldTypeRef, fieldType, field);
+            fieldType = FieldParser.ProcessOffsets(targetType, fieldType, field, fieldName, ref fieldTypeSig);
+            fieldType = FieldParser.SetGeneric(fieldTypeSig, fieldType, field);
 
             FieldParser.SaveEnum(field, fieldType);
             ret.Fields.Add(field);
         }
     }
 
-    private static Dictionary<int, MethodDefinition> ParseCallsForCreateMethod(MethodDefinition createMethod,
-        TypeDefinition targetType)
+    private static Dictionary<int, MethodDef> ParseCallsForCreateMethod(MethodDef createMethod, TypeDef targetType)
     {
-        Dictionary<int, MethodDefinition> ret = [];
-        Dictionary<long, MethodDefinition> typeMethods = [];
+        Dictionary<int, MethodDef> ret = [];
+        Dictionary<long, MethodDef> typeMethods = [];
 
-        foreach (var method in targetType.GetMethods())
+        foreach (var method in targetType.Methods)
         {
             var rva = InstructionsParser.GetMethodRva(method);
             typeMethods.Add(rva, method);
@@ -114,7 +111,7 @@ internal class ArmTypeParser : ITypeParser
         return ret;
     }
 
-    private static int ParseCallsForAddMethod(MethodDefinition createMethod)
+    private static int ParseCallsForAddMethod(MethodDef createMethod)
     {
         var calls = TypeHelper.GetAnalyzedCalls(createMethod);
         var call = calls.First(m =>

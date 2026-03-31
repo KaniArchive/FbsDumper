@@ -4,8 +4,7 @@ using FbsDumper.Assembly.TypeParsers;
 using FbsDumper.CLI;
 using FbsDumper.Helpers;
 using FbsDumper.Instructions;
-using Mono.Cecil;
-using Mono.Cecil.Rocks;
+using dnlib.DotNet;
 using ZLinq;
 
 namespace FbsDumper.Assembly;
@@ -33,13 +32,13 @@ internal static class TypeHelper
     private static InstructionsParser InstructionsResolver =>
         _instructionsResolver ??= new InstructionsParser(Parser.GameAssemblyPath);
 
-    public static string SystemToStringType(TypeDefinition field)
+    public static string SystemToStringType(FlatTypeInfo field)
     {
         var fullName = field.FullName;
         if (TypeMap.TryGetValue(fullName, out var type)) return type;
 
         var name = field.Name;
-        if (name.StartsWith("System.")) Log.Global.LogUnknownSystemType(name);
+        if (name.StartsWith("System.", StringComparison.Ordinal)) Log.Global.LogUnknownSystemType(name);
 
         return name;
     }
@@ -60,20 +59,36 @@ internal static class TypeHelper
         return instructionsParser.Architecture;
     }
 
-    public static List<TypeDefinition> GetAllFlatBufferTypes(ModuleDefinition module, string baseTypeName)
+    public static TypeDef ResolveTypeDef(TypeSig typeSig) =>
+        typeSig.ToTypeDefOrRef()?.ResolveTypeDef()
+        ?? throw new InvalidOperationException($"Failed to resolve type '{typeSig.FullName}'.");
+
+    public static FlatTypeInfo ToFlatTypeInfo(TypeDef typeDef) => FlatTypeInfo.FromTypeDef(typeDef);
+
+    public static FlatTypeInfo ToFlatTypeInfo(TypeSig typeSig) => FlatTypeInfo.FromTypeSig(typeSig);
+
+    public static FlatTypeInfo GetStringType(TypeDef targetType) =>
+        FlatTypeInfo.FromTypeSig(targetType.Module.CorLibTypes.String);
+
+    public static List<TypeDef> GetAllFlatBufferTypes(ModuleDef module, string baseTypeName)
     {
-        List<TypeDefinition> ret =
+        List<TypeDef> ret =
         [
             .. module.GetTypes().AsValueEnumerable().Where(t =>
                 t.HasInterfaces &&
-                t.Interfaces.Any(i => i.InterfaceType.FullName == baseTypeName)
+                t.Interfaces.Any(i => i.Interface?.FullName == baseTypeName)
             ).ToArray()
         ];
 
         if (!string.IsNullOrEmpty(Parser.NameSpace2LookFor))
-            ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == Parser.NameSpace2LookFor).ToArray()];
+            ret =
+            [
+                .. ret.AsValueEnumerable().Where(t =>
+                    string.Equals(t.Namespace.String, Parser.NameSpace2LookFor, StringComparison.Ordinal)
+                ).ToArray()
+            ];
 
-        var byName = ret.AsValueEnumerable().GroupBy(t => t.Name).ToArray();
+        var byName = ret.AsValueEnumerable().GroupBy(t => t.Name.String ?? string.Empty).ToArray();
 
         if (Parser.SkipDuplicates)
             return [.. byName.AsValueEnumerable().Select(g => g.First()).ToArray()];
@@ -91,10 +106,10 @@ internal static class TypeHelper
             .Select(group => group.First())
     ];
 
-    public static FlatTable TypeToTable(ITypeParser typeParser, TypeDefinition targetType)
+    public static FlatTable TypeToTable(ITypeParser typeParser, TypeDef targetType)
     {
-        var typeName = targetType.Name;
-        var ret = new FlatTable(typeName, targetType.Namespace);
+        var typeName = targetType.Name.String ?? string.Empty;
+        var ret = new FlatTable(typeName, targetType.Namespace.String ?? string.Empty);
 
         var createMethod = targetType.Methods.FirstOrDefault(m =>
             m.Name == $"Create{typeName}" &&
@@ -121,27 +136,27 @@ internal static class TypeHelper
         return ret;
     }
 
-    private static FlatTable ProcessWithForceMethod(ref FlatTable ret, TypeDefinition targetType)
+    private static FlatTable ProcessWithForceMethod(ref FlatTable ret, TypeDef targetType)
     {
         FieldParser.ProcessFieldsByMethods(ref ret, targetType);
         return ret;
     }
 
-    private static FlatTable ProcessWithoutCreateMethod(FlatTable ret, TypeDefinition targetType)
+    private static FlatTable ProcessWithoutCreateMethod(FlatTable ret, TypeDef targetType)
     {
         Log.Warning($"{targetType.FullName} does NOT contain a Create{targetType.Name} function. Fields will be empty");
         ret.NoCreate = true;
         return ret;
     }
 
-    public static FlatEnum TypeToEnum(TypeDefinition typeDef)
+    public static FlatEnum TypeToEnum(TypeDef typeDef)
     {
-        var retType = typeDef.GetEnumUnderlyingType().Resolve();
-        var ret = new FlatEnum(retType, typeDef.Name, typeDef.Namespace);
+        var retType = FlatTypeInfo.FromTypeSig(typeDef.GetEnumUnderlyingType());
+        var ret = new FlatEnum(retType, typeDef.Name.String ?? string.Empty, typeDef.Namespace.String ?? string.Empty);
 
         foreach (var fieldDef in typeDef.Fields.AsValueEnumerable().Where(f => f.HasConstant))
         {
-            var enumField = new FlatEnumField(fieldDef.Name, Convert.ToInt64(fieldDef.Constant));
+            var enumField = new FlatEnumField(fieldDef.Name.String ?? string.Empty, Convert.ToInt64(fieldDef.Constant.Value));
             ret.Fields.Add(enumField);
         }
 
@@ -152,7 +167,7 @@ internal static class TypeHelper
     {
         result = 0;
 
-        if (target.StartsWith("0x"))
+        if (target.StartsWith("0x", StringComparison.Ordinal))
         {
             var targetHex = target[2..];
             return !string.IsNullOrEmpty(targetHex) &&
@@ -165,14 +180,14 @@ internal static class TypeHelper
                long.TryParse(targetDecimal, NumberStyles.Integer, null, out result);
     }
 
-    public static List<InstructionsAnalyzer.CallInfo> GetAnalyzedCalls(MethodDefinition createMethod)
+    public static List<InstructionsAnalyzer.CallInfo> GetAnalyzedCalls(MethodDef createMethod)
     {
         var instructions = InstructionsResolver.GetInstructions(createMethod);
         var analyzer = InstructionsAnalyzer.GetAnalyzer(InstructionsResolver.Architecture);
         return analyzer.AnalyzeCalls(instructions);
     }
 
-    public static long GetEndMethodRva(TypeDefinition targetType)
+    public static long GetEndMethodRva(TypeDef targetType)
     {
         var endMethod = targetType.Methods.First(m => m.Name == $"End{targetType.Name}");
         return InstructionsParser.GetMethodRva(endMethod);

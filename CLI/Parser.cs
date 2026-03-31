@@ -3,7 +3,7 @@ using FbsDumper.Context;
 using FbsDumper.Helpers;
 using FbsDumper.Instructions;
 using FbsDumper.Services;
-using Mono.Cecil;
+using dnlib.DotNet;
 using ZLinq;
 
 namespace FbsDumper.CLI;
@@ -16,7 +16,7 @@ public static class Parser
     public static string? NameSpace2LookFor;
 
     public static FlatBuilder? FlatBufferBuilder;
-    public static readonly List<TypeDefinition> FlatEnumsToAdd = [];
+    public static readonly List<TypeDef> FlatEnumsToAdd = [];
 
     public static bool Force;
     public static bool SkipDuplicates;
@@ -60,12 +60,10 @@ public static class Parser
             Environment.Exit(1);
         }
 
-        var resolver = new DefaultAssemblyResolver();
-        resolver.AddSearchDirectory(_dummyAssemblyDir);
-        var readerParameters = new ReaderParameters
-        {
-            AssemblyResolver = resolver
-        };
+        var moduleContext = ModuleDef.CreateModuleContext();
+        var resolver = (AssemblyResolver)moduleContext.AssemblyResolver;
+        resolver.EnableTypeDefCache = true;
+        resolver.PreSearchPaths.Add(_dummyAssemblyDir);
         Log.Info("Reading game assemblies...");
 
         var blueArchiveDllPath = Path.Combine(_dummyAssemblyDir, "BlueArchive.dll");
@@ -76,7 +74,7 @@ public static class Parser
             Environment.Exit(1);
         }
 
-        var asm = AssemblyDefinition.ReadAssembly(blueArchiveDllPath, readerParameters);
+        using var asm = ModuleDefMD.Load(blueArchiveDllPath, moduleContext);
 
         var flatBuffersDllPath = Path.Combine(_dummyAssemblyDir, "FlatBuffers.dll");
         if (!File.Exists(flatBuffersDllPath))
@@ -86,9 +84,9 @@ public static class Parser
             Environment.Exit(1);
         }
 
-        var asmFbs = AssemblyDefinition.ReadAssembly(flatBuffersDllPath, readerParameters);
+        using var asmFbs = ModuleDefMD.Load(flatBuffersDllPath, moduleContext);
 
-        FlatBufferBuilder = new FlatBuilder(asmFbs.MainModule);
+        FlatBufferBuilder = new FlatBuilder(asmFbs);
 
         var architecture = NoAsmProcessing ? Architecture.X86 : TypeHelper.DetectArchitecture(GameAssemblyPath);
         var typeParser = TypeHelper.GetTypeParser(architecture);
@@ -96,7 +94,7 @@ public static class Parser
         Log.Info(NoAsmProcessing ? "Using no assembly analysis mode" : $"Detected architecture: {architecture}");
         Log.Info("Getting a list of types...");
 
-        var typeDefs = TypeHelper.GetAllFlatBufferTypes(asm.MainModule, FlatBaseType);
+        var typeDefs = TypeHelper.GetAllFlatBufferTypes(asm, FlatBaseType);
 
         FlatSchema schema = new();
 

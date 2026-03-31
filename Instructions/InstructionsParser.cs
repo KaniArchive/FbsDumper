@@ -1,7 +1,7 @@
 using AsmArm64;
+using dnlib.DotNet;
 using FbsDumper.Helpers;
 using Iced.Intel;
-using Mono.Cecil;
 using ZLinq;
 
 namespace FbsDumper.Instructions;
@@ -104,7 +104,7 @@ internal class InstructionsParser
         };
     }
 
-    public List<InstructionWithAddress> GetInstructions(MethodDefinition targetMethod, bool debug = false)
+    public List<InstructionWithAddress> GetInstructions(MethodDef targetMethod, bool debug = false)
     {
         var rva = GetMethodRva(targetMethod);
         if (rva != 0)
@@ -194,13 +194,13 @@ internal class InstructionsParser
             ? string.Empty
             : instruction.Operands.AsValueEnumerable().Select(operand => operand.ToString()).JoinToString(", ");
 
-    public static long GetMethodRva(MethodDefinition method)
+    public static long GetMethodRva(MethodDef method)
     {
         if (!method.HasCustomAttributes)
             return 0;
 
         var customAttr = method.CustomAttributes.FirstOrDefault(a => a.AttributeType.Name == "AddressAttribute");
-        if (customAttr is not { HasFields: true })
+        if (customAttr == null || !customAttr.Fields.Any())
             return 0;
 
         var argRva = customAttr.Fields.First(f => f.Name == "RVA");
@@ -208,13 +208,13 @@ internal class InstructionsParser
         return rva;
     }
 
-    private static long GetMethodOffset(MethodDefinition method)
+    private static long GetMethodOffset(MethodDef method)
     {
         if (!method.HasCustomAttributes)
             return 0;
 
         var customAttr = method.CustomAttributes.FirstOrDefault(a => a.AttributeType.Name == "AddressAttribute");
-        if (customAttr is not { HasFields: true })
+        if (customAttr == null || !customAttr.Fields.Any())
             return 0;
 
         var argOffset = customAttr.Fields.First(f => f.Name == "Offset");
@@ -242,10 +242,4 @@ internal record InstructionWithAddress(Arm64Instruction? Instruction, ulong Addr
                     .JoinToString(", ");
         }
     }
-}
-
-public enum Architecture
-{
-    Arm64,
-    X86
 }
