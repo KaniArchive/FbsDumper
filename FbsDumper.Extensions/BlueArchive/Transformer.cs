@@ -1,17 +1,17 @@
+using dnlib.DotNet;
 using FbsDumper.Assembly;
-using ZLinq;
 
 namespace FbsDumper.Extensions.BlueArchive;
 
 public static class Transformer
 {
-    public static void Transform(FlatSchema schema)
+    public static void Transform(FlatTable table, TypeDef typeDef)
     {
-        foreach (var field in schema.FlatTables
-                     .AsValueEnumerable()
-                     .Where(table => table.Metadata.TryGetValue("HasEncryption", out var v) && v is true)
-                     .SelectMany(table => table.Fields)
-                     .Where(field => field.Type.FullName != "System.Boolean"))
-            field.Name += " (encrypted)";
+        table.Metadata["HasEncryption"] = typeDef.Fields.Any(f =>
+            f.IsPublic && f.IsStatic &&
+            f.Name == "TableKey" &&
+            f.FieldType.FullName == "System.Byte[]");
     }
+
+    public static void Transform(FlatSchema schema) => _ = schema;
 }

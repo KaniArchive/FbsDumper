@@ -46,7 +46,17 @@ internal static class TypeHelper
             _ => throw new ArgumentException($"Unsupported architecture: {architecture}")
         };
 
-    public static string CleanFieldName(string fieldName) => fieldName.Replace("_", "");
+    public static string TrimAddPrefix(string fieldName)
+    {
+        if (fieldName.StartsWith("Add", StringComparison.Ordinal) &&
+            fieldName.Length > 3 &&
+            char.IsUpper(fieldName[3]))
+            return fieldName[3..];
+
+        return fieldName;
+    }
+
+    public static string CleanUnderscore(string fieldName) => fieldName.Replace("_", "");
 
     public static Architecture DetectArchitecture(string gameAssemblyPath)
     {
@@ -126,6 +136,7 @@ internal static class TypeHelper
             }
 
             FieldParser.ForceProcessFields(context, ref ret, createMethod, targetType);
+            ApplyCreateNames(ret, createMethod);
             context.Extension.OnTableBuilt?.Invoke(ret, targetType);
             return ret;
         }
@@ -138,12 +149,14 @@ internal static class TypeHelper
         }
 
         typeParser.ProcessFields(context, ref ret, createMethod, targetType);
+        ApplyCreateNames(ret, createMethod);
         context.Extension.OnTableBuilt?.Invoke(ret, targetType);
         return ret;
     }
 
     private static FlatTable ProcessWithForceMethod(ref FlatTable ret, TypeDef targetType)
     {
+        ret.NoCreate = true;
         FieldParser.ProcessFieldsByMethods(ref ret, targetType);
         return ret;
     }
@@ -153,6 +166,33 @@ internal static class TypeHelper
         Log.Warning($"{targetType.FullName} does NOT contain a Create{targetType.Name} function. Fields will be empty");
         ret.NoCreate = true;
         return ret;
+    }
+
+    private static void ApplyCreateNames(FlatTable table, MethodDef createMethod)
+    {
+        var fieldCount = Math.Min(table.Fields.Count, createMethod.Parameters.Count - 1);
+
+        for (var i = 0; i < fieldCount; i++)
+            table.Fields[i].Name = GetName(createMethod.Parameters[i + 1]);
+    }
+
+    private static string GetName(Parameter parameter)
+    {
+        var name = UTF8String.ToSystemString(parameter.Name);
+        return name.EndsWith("Offset", StringComparison.Ordinal) && IsOffset(parameter.Type)
+            ? name[..^"Offset".Length]
+            : name;
+    }
+
+    private static bool IsOffset(TypeSig typeSig)
+    {
+        var fullName = typeSig.ToTypeDefOrRef()?.FullName;
+        if (string.IsNullOrEmpty(fullName))
+            return false;
+
+        return string.Equals(fullName, "FlatBuffers.StringOffset", StringComparison.Ordinal) ||
+               fullName.StartsWith("FlatBuffers.VectorOffset", StringComparison.Ordinal) ||
+               fullName.StartsWith("FlatBuffers.Offset", StringComparison.Ordinal);
     }
 
     public static FlatEnum TypeToEnum(ParserOptionsContext context, TypeDef typeDef)

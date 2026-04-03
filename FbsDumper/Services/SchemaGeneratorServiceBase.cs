@@ -146,7 +146,8 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
     {
         writer.AppendFormat($"table {table.TableName} {{\n");
 
-        if (table.NoCreate) writer.AppendLiteral("\t// No Create method\n");
+        if (table.NoCreate && table.Fields.Count == 0)
+            writer.AppendLiteral("\t// No Create method\n");
 
         foreach (var field in table.Fields)
             WriteField(ref writer, new FieldWriteContext(field, table, file, schema));
@@ -173,12 +174,23 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
     protected virtual void WriteField<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FieldWriteContext field)
         where TBufferWriter : IBufferWriter<byte>
     {
-        var name = Generation.ForceSnakeCase ? field.Field.Name.ToSnakeCase() : field.Field.Name;
+        var name = GetFieldName(field);
+        var type = GetFieldType(field);
+
+        writer.AppendFormat($"\t{name}: {type}; // index 0x{field.Field.Offset:X}\n");
+    }
+
+    protected string GetFieldName(FieldWriteContext field) =>
+        Generation.ForceSnakeCase ? field.Field.Name.ToSnakeCase() : field.Field.Name;
+
+    protected string GetFieldType(FieldWriteContext field)
+    {
         var type = TypeHelper.SystemToStringType(field.Field.Type);
         type = ResolveFieldType(type, field);
 
-        if (field.Field.IsArray) type = $"[{type}]";
+        if (field.Field.IsArray)
+            type = $"[{type}]";
 
-        writer.AppendFormat($"\t{name}: {type}; // index 0x{field.Field.Offset:X}\n");
+        return type;
     }
 }
