@@ -1,5 +1,5 @@
 ﻿using FbsDumper.Context;
-using FbsDumper.Extensions.BlueArchive;
+using BlueArchive = FbsDumper.Extensions.BlueArchive.Extension;
 
 namespace FbsDumper.CLI;
 
@@ -7,7 +7,7 @@ internal static class ExtensionRegistry
 {
     private static readonly IExtension[] Extensions =
     [
-        new BlueArchiveExtension()
+        new BlueArchive()
     ];
 
     public static ExtensionContext Build(string[]? names = null)
