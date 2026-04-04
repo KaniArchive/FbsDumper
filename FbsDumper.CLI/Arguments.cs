@@ -17,7 +17,7 @@ public static class Args
     /// <param name="enumOut">-eo, How to handle enums: Inline (default), Separate (single enums.fbs), Omit (skip enums).</param>
     /// <param name="forceSnakeCase">-s, Force snake case.</param>
     /// <param name="force">-f, Force processing using Add methods when no Create method exists.</param>
-    /// <param name="skipDuplicates">-sd, Keep only the first occurrence of duplicate short names.</param>
+    /// <param name="skipDuplicates">-sd, Disable namespace breaking. Keep only the first occurrence of duplicate short names.</param>
     /// <param name="verbose">-v, Enable verbose debug logging.</param>
     /// <param name="suppressWarnings">-sw, Suppress warning messages.</param>
     public static void Run(

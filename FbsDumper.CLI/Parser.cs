@@ -45,7 +45,8 @@ public static class Parser
             context.CustomNamespace,
             context.EnumOut,
             context.ForceSnakeCase,
-            context.Split);
+            context.Split,
+            context.SkipDuplicates);
 
         FileGeneratorService.Write(schema, generation, extension);
 

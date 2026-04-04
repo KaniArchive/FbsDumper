@@ -15,7 +15,7 @@ public class SingleGeneratorService(FileGenerationContext generation) : SchemaGe
 
     protected override void GenerateCore(SchemaWriteContext schema)
     {
-        if (!schema.Lookup.HasDuplicates)
+        if (Generation.SkipDuplicates)
         {
             WriteSchemaFile(BuildFile(schema), schema);
             return;
