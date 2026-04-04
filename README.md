@@ -58,7 +58,7 @@ dotnet build
 - `-o, --output-file`: Specifies the output file or directory when using `--split` (Default: BlueArchive.fbs)
 - `-n, --namespace`: Specifies the flatdata namespace. In `--split` mode acts as a root prefix prepended to each IL namespace
 - `-sp, --split`: Split output into one `.fbs` file per IL namespace, written flat into the output directory
-- `-ext, --extensions`: Extensions to enable (e.g. --extensions BlueArchive). If not specified, no extensions are run
+- `-ext, --extensions`: Extensions to enable. If not specified, no extensions are run
 - `-eo, --enum-out`: How to handle enums: `Inline` (default), `Separate` (single `enums.fbs` at root), `Omit` (skip enums)
 - `-s, --force-snake-case`: Force snake case conversion
 - `-nl, --namespace-to-look-for`: Specifies the namespace to look for
@@ -67,10 +67,21 @@ dotnet build
 - `-v, --verbose`: Enable verbose debug logging
 - `-sw, --suppress-warnings`: Suppress warning messages
 
+
+### Extension
+
+Extension is a feature that allows you to extend or modify the functionality of `FbsDumper` by adding custom logic tailored to a specific game or scenario.
+
+To use an extension, you need to specify it using the `--extensions` option followed by the extension name.
+
+```sh
+FbsDumper.exe --dummy-dll "path/to/DummyDll" --extensions MyCustomGameExtension
+```
+
 > [!IMPORTANT]
 > **Disclaimer:** This software is made solely for educational purposes. I do not claim any responsibility for any usage
 > of this software.
 
 ## License
 
-`FBSDumper` is under **GPL v3**. See [LICENSE](LICENSE) for copyright and license details.
+`FbsDumper` is under **GPL v3**. See [LICENSE](LICENSE) for copyright and license details.

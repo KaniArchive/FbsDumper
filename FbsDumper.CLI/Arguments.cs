@@ -13,7 +13,7 @@ public static class Args
     /// <param name="outputFile">-o, Specifies the output file or directory (when using --split).</param>
     /// <param name="namespace">-n, Specifies the flatdata namespace</param>
     /// <param name="split">-sp, Split output into one .fbs file per IL namespace, organized in the output directory.</param>
-    /// <param name="extensions">-ext, Extensions to enable (e.g. --extensions BlueArchive). If not specified, no extensions are run.</param>
+    /// <param name="extensions">-ext, Extensions to enable. If not specified, no extensions are run.</param>
     /// <param name="enumOut">-eo, How to handle enums: Inline (default), Separate (single enums.fbs), Omit (skip enums).</param>
     /// <param name="forceSnakeCase">-s, Force snake case.</param>
     /// <param name="force">-f, Force processing using Add methods when no Create method exists.</param>
