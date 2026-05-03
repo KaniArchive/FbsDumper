@@ -4,9 +4,9 @@ using ZLinq;
 
 namespace FbsDumper.Services;
 
-internal sealed class SchemaBlockBuilder(FileGenerationContext gen)
+public sealed class SchemaBlockBuilder(FileGenerationContext gen)
 {
-    public List<SchemaBlock> Build(SchemaWriteContext schema)
+    public List<SchemaBlockContext> Build(SchemaWriteContext schema)
     {
         var namespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -20,7 +20,7 @@ internal sealed class SchemaBlockBuilder(FileGenerationContext gen)
         return Build(schema, [.. namespaces], gen.EnumOut == EnumOut.Inline);
     }
 
-    public List<SchemaBlock> BuildEnums(SchemaWriteContext schema)
+    public List<SchemaBlockContext> BuildEnums(SchemaWriteContext schema)
     {
         var namespaces = schema.Schema.FlatEnums
             .AsValueEnumerable()
@@ -31,11 +31,11 @@ internal sealed class SchemaBlockBuilder(FileGenerationContext gen)
         return Build(schema, namespaces, false);
     }
 
-    private List<SchemaBlock> Build(SchemaWriteContext schema, string[] namespaces, bool inlineEnums) =>
+    private List<SchemaBlockContext> Build(SchemaWriteContext schema, string[] namespaces, bool inlineEnums) =>
         namespaces
             .AsValueEnumerable()
             .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .Select(ns => new SchemaBlock(
+            .Select(ns => new SchemaBlockContext(
                 NamespaceContext.Build(ns, gen.CustomNamespace),
                 schema.Schema.FlatTables
                     .AsValueEnumerable()

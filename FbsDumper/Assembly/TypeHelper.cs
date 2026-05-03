@@ -9,7 +9,7 @@ using ZLinq;
 
 namespace FbsDumper.Assembly;
 
-internal static class TypeHelper
+public static class TypeHelper
 {
     private static FrozenDictionary<string, string> TypeMap =>
         new Dictionary<string, string>
@@ -131,26 +131,22 @@ internal static class TypeHelper
                 var result = context.Force
                     ? ProcessWithForceMethod(ref ret, targetType)
                     : ProcessWithoutCreateMethod(ret, targetType);
-                context.Extension.OnTableBuilt?.Invoke(result, targetType);
                 return result;
             }
 
             FieldParser.ForceProcessFields(context, ref ret, createMethod, targetType);
             ApplyCreateNames(ret, createMethod);
-            context.Extension.OnTableBuilt?.Invoke(ret, targetType);
             return ret;
         }
 
         if (createMethod == null)
         {
             var result = ProcessWithoutCreateMethod(ret, targetType);
-            context.Extension.OnTableBuilt?.Invoke(result, targetType);
             return result;
         }
 
         typeParser.ProcessFields(context, ref ret, createMethod, targetType);
         ApplyCreateNames(ret, createMethod);
-        context.Extension.OnTableBuilt?.Invoke(ret, targetType);
         return ret;
     }
 
@@ -207,7 +203,6 @@ internal static class TypeHelper
             ret.Fields.Add(enumField);
         }
 
-        context.Extension.OnEnumBuilt?.Invoke(ret, typeDef);
         return ret;
     }
 
@@ -228,7 +223,7 @@ internal static class TypeHelper
                long.TryParse(targetDecimal, NumberStyles.Integer, null, out result);
     }
 
-    public static List<InstructionsAnalyzer.CallInfo> GetAnalyzedCalls(ParserOptionsContext context,
+    internal static List<InstructionsAnalyzer.CallInfo> GetAnalyzedCalls(ParserOptionsContext context,
         MethodDef createMethod)
     {
         var instructions = context.InstructionsParser.GetInstructions(createMethod);

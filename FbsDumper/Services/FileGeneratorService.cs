@@ -5,12 +5,11 @@ namespace FbsDumper.Services;
 
 public static class FileGeneratorService
 {
-    public static void Write(FlatSchema schema, FileGenerationContext generation, ExtensionContext? extension = null)
+    public static void Write(FlatSchema schema, FileGenerationContext generation)
     {
-        var generator = extension?.CreateGenerator?.Invoke(generation)
-                        ?? (generation.IsSplitMode
-                            ? new SplitGeneratorService(generation)
-                            : new SingleGeneratorService(generation));
+        SchemaGeneratorServiceBase generator = generation.IsSplitMode
+            ? new SplitGeneratorService(generation)
+            : new SingleGeneratorService(generation);
 
         generator.Generate(schema);
     }

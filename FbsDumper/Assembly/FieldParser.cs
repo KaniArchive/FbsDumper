@@ -4,7 +4,7 @@ using ZLinq;
 
 namespace FbsDumper.Assembly;
 
-internal abstract class FieldParser : ITypeParser
+public abstract class FieldParser : ITypeParser
 {
     public abstract void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
         TypeDef targetType);
@@ -31,7 +31,7 @@ internal abstract class FieldParser : ITypeParser
         ret.Fields.Add(field);
     }
 
-    internal static TypeDef ProcessOffsets(TypeDef targetType, TypeDef fieldType,
+    public static TypeDef ProcessOffsets(TypeDef targetType, TypeDef fieldType,
         FlatField field, string fieldName, ref TypeSig fieldTypeSig)
     {
         switch (fieldType.FullName)
@@ -72,7 +72,7 @@ internal abstract class FieldParser : ITypeParser
         return fieldType;
     }
 
-    internal static TypeSig ProcessOffsetsByMethods(TypeDef targetType, TypeDef fieldType, FlatField field,
+    public static TypeSig ProcessOffsetsByMethods(TypeDef targetType, TypeDef fieldType, FlatField field,
         string fieldName, TypeSig fieldTypeSig, MethodDef method)
     {
         switch (fieldType.FullName)
@@ -103,7 +103,7 @@ internal abstract class FieldParser : ITypeParser
         return fieldTypeSig;
     }
 
-    internal static void ForceProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
+    public static void ForceProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
         TypeDef targetType)
     {
         foreach (var (param, offset) in createMethod.Parameters.AsValueEnumerable().Skip(1)
@@ -129,7 +129,7 @@ internal abstract class FieldParser : ITypeParser
         }
     }
 
-    internal static void ProcessFieldsByMethods(ref FlatTable ret, TypeDef targetType)
+    public static void ProcessFieldsByMethods(ref FlatTable ret, TypeDef targetType)
     {
         foreach (var method in targetType.Methods.Where(m =>
                      m.IsPublic && m.IsStatic && m.Name.StartsWith("Add", StringComparison.Ordinal) &&
@@ -153,7 +153,7 @@ internal abstract class FieldParser : ITypeParser
         }
     }
 
-    internal static TypeSig ExtractGeneric(TypeSig fieldTypeSig, ref TypeDef fieldType)
+    public static TypeSig ExtractGeneric(TypeSig fieldTypeSig, ref TypeDef fieldType)
     {
         if (fieldTypeSig is not GenericInstSig genericInstance) return fieldTypeSig;
         fieldType = TypeHelper.ResolveTypeDef(genericInstance.GenericArguments.First());
@@ -162,7 +162,7 @@ internal abstract class FieldParser : ITypeParser
         return fieldTypeSig;
     }
 
-    internal static TypeDef SetGeneric(TypeSig fieldTypeSig, TypeDef fieldType, FlatField field)
+    public static TypeDef SetGeneric(TypeSig fieldTypeSig, TypeDef fieldType, FlatField field)
     {
         if (!fieldTypeSig.IsGenericInstanceType) return fieldType;
 
@@ -173,7 +173,7 @@ internal abstract class FieldParser : ITypeParser
         return fieldType;
     }
 
-    internal static void SaveEnum(ParserOptionsContext context, FlatField field, TypeDef fieldType)
+    public static void SaveEnum(ParserOptionsContext context, FlatField field, TypeDef fieldType)
     {
         if (field.Type.IsEnum && !context.FlatEnumsToAdd.Contains(fieldType))
             context.FlatEnumsToAdd.Add(fieldType);

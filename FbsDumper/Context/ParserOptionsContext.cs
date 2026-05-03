@@ -34,8 +34,6 @@ public sealed class ParserOptionsContext(
     public FlatBuilder? FlatBufferBuilder { get; set; }
     public List<TypeDef> FlatEnumsToAdd { get; } = [];
     public bool NoAsmProcessing { get; set; }
-    
-    public ExtensionContext Extension { get; } = new();
 
     internal InstructionsParser InstructionsParser =>
         field ??= new InstructionsParser(GameAssemblyPath);

@@ -8,7 +8,7 @@ namespace FbsDumper.CLI;
 public static class Parser
 {
     public static void Execute(string dummyDll, string gameAssembly, string? namespaceToLookFor, string outputFile,
-        string nameSpace, string[]? extensions, bool split, EnumOut enumOut, bool forceSnakeCase, bool force, bool skipDuplicates,
+        string nameSpace, bool split, EnumOut enumOut, bool forceSnakeCase, bool force, bool skipDuplicates,
         bool verbose, bool suppressWarnings)
     {
         if (verbose) Log.EnableDebugLogging();
@@ -33,12 +33,7 @@ public static class Parser
 
         context.NoAsmProcessing = ValidatePaths(context);
 
-        var extension = ExtensionRegistry.Build(extensions);
-        context.Extension.OnTableBuilt = extension.OnTableBuilt;
-        context.Extension.OnSchemaBuilt = extension.OnSchemaBuilt;
-
         var schema = SchemaBuilder.Build(context, dummyDll);
-        context.Extension.OnSchemaBuilt?.Invoke(schema);
 
         var generation = new FileGenerationContext(
             context.OutputFile,
@@ -48,7 +43,7 @@ public static class Parser
             context.Split,
             context.SkipDuplicates);
 
-        FileGeneratorService.Write(schema, generation, extension);
+        FileGeneratorService.Write(schema, generation);
 
         Log.Info("Done.");
     }

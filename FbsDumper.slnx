@@ -1,8 +1,4 @@
 <Solution>
-    <Folder Name="/FbsDumper.Extensions/" />
-    <Folder Name="/FbsDumper.Extensions/BlueArchive/">
-        <Project Path="FbsDumper.Extensions/BlueArchive/FbsDumper.Extensions.BlueArchive.csproj" />
-    </Folder>
     <Project Path="FbsDumper.CLI/FbsDumper.CLI.csproj" />
     <Project Path="FbsDumper/FbsDumper.csproj" />
 </Solution>

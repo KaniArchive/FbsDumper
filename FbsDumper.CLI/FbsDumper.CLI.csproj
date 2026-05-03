@@ -20,7 +20,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\FbsDumper.Extensions\BlueArchive\FbsDumper.Extensions.BlueArchive.csproj" />
         <ProjectReference Include="..\FbsDumper\FbsDumper.csproj"/>
     </ItemGroup>
 

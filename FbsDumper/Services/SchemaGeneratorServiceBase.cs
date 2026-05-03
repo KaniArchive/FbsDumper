@@ -66,7 +66,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
             : $"{ns.FinalNamespace}.{typeName}";
     }
 
-    private protected static FileWriteContext CreateFile(string outputPath, SchemaBlock block,
+    private protected static FileWriteContext CreateFile(string outputPath, SchemaBlockContext block,
         IReadOnlyList<string> includes, bool qualifyTypes) =>
         new(outputPath, block.Namespace, block.Tables, block.Enums, includes, qualifyTypes);
 
@@ -87,7 +87,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
             return;
 
         var filePath = GetSeparateEnumsPath();
-        var schemaBlock = new SchemaBlock(NamespaceContext.Build(string.Empty, Generation.CustomNamespace), [], schema.Schema.FlatEnums);
+        var schemaBlock = new SchemaBlockContext(NamespaceContext.Build(string.Empty, Generation.CustomNamespace), [], schema.Schema.FlatEnums);
 
         IReadOnlyList<FileWriteContext> files = schema.Lookup.HasDuplicates
             ? [CreateFile(filePath, schemaBlock, [], false)]

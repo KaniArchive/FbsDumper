@@ -7,7 +7,7 @@ using ZLinq;
 
 namespace FbsDumper.Assembly.TypeParsers;
 
-internal class ArmTypeParser : FieldParser
+public class ArmTypeParser : FieldParser
 {
     public override void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
         TypeDef targetType)

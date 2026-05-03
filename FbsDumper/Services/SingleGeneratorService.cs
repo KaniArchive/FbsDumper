@@ -44,7 +44,7 @@ public class SingleGeneratorService(FileGenerationContext generation) : SchemaGe
 
         return CreateFile(
             OutputPath,
-            new SchemaBlock(
+            new SchemaBlockContext(
                 ns,
                 schema.Schema.FlatTables,
                 enums),
