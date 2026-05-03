@@ -14,6 +14,7 @@ public class FlatTable(string tableName, string originalNamespace = "")
     public readonly string OriginalNamespace = originalNamespace;
     public readonly string TableName = tableName;
     public bool NoCreate = false;
+    public bool HasEncryption = false;
     public Dictionary<string, object> Metadata { get; } = [];
 }
 

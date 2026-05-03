@@ -115,7 +115,13 @@ public static class TypeHelper
     public static FlatTable TypeToTable(ParserOptionsContext context, ITypeParser typeParser, TypeDef targetType)
     {
         var typeName = targetType.Name.String ?? string.Empty;
-        var ret = new FlatTable(typeName, targetType.Namespace.String ?? string.Empty);
+        var ret = new FlatTable(typeName, targetType.Namespace.String ?? string.Empty)
+        {
+            HasEncryption = context.Mx && targetType.Fields.Any(f =>
+                f.IsPublic && f.IsStatic &&
+                f.Name == "TableKey" &&
+                f.FieldType.FullName == "System.Byte[]")
+        };
 
         var createMethod = targetType.Methods.FirstOrDefault(m =>
             m.Name == $"Create{typeName}" &&

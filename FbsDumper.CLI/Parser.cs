@@ -8,7 +8,7 @@ namespace FbsDumper.CLI;
 public static class Parser
 {
     public static void Execute(string dummyDll, string gameAssembly, string? namespaceToLookFor, string outputFile,
-        string nameSpace, bool split, EnumOut enumOut, bool forceSnakeCase, bool force, bool skipDuplicates,
+        string nameSpace, bool split, EnumOut enumOut, bool forceSnakeCase, bool force, bool mx, bool skipDuplicates,
         bool verbose, bool suppressWarnings)
     {
         if (verbose) Log.EnableDebugLogging();
@@ -27,6 +27,7 @@ public static class Parser
             enumOut,
             forceSnakeCase,
             force,
+            mx,
             skipDuplicates,
             verbose,
             suppressWarnings);

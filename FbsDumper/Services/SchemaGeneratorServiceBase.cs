@@ -136,7 +136,16 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         FileWriteContext file, SchemaWriteContext schema)
         where TBufferWriter : IBufferWriter<byte>
     {
-        writer.AppendFormat($"table {table.TableName} {{\n");
+        var modifiers = new List<string>(2);
+        if (table.HasEncryption)
+            modifiers.Add("encrypted");
+        if (table.NoCreate)
+            modifiers.Add("no_create");
+
+        var tableDecl = modifiers.Count > 0
+            ? $"table {table.TableName} ({string.Join(", ", modifiers)})"
+            : $"table {table.TableName}";
+        writer.AppendFormat($"{tableDecl} {{\n");
 
         if (table.NoCreate && table.Fields.Count == 0)
             writer.AppendLiteral("\t// No Create method\n");
