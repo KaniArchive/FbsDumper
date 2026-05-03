@@ -1,0 +1,4 @@
+<Solution>
+    <Project Path="FbsDumper.CLI/FbsDumper.CLI.csproj" />
+    <Project Path="FbsDumper/FbsDumper.csproj" />
+</Solution>

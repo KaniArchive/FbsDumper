@@ -9,7 +9,7 @@ using ZLinq;
 
 namespace FbsDumper.Assembly;
 
-internal static class TypeHelper
+public static class TypeHelper
 {
     private static FrozenDictionary<string, string> TypeMap =>
         new Dictionary<string, string>
@@ -46,7 +46,17 @@ internal static class TypeHelper
             _ => throw new ArgumentException($"Unsupported architecture: {architecture}")
         };
 
-    public static string CleanFieldName(string fieldName) => fieldName.Replace("_", "");
+    public static string TrimAddPrefix(string fieldName)
+    {
+        if (fieldName.StartsWith("Add", StringComparison.Ordinal) &&
+            fieldName.Length > 3 &&
+            char.IsUpper(fieldName[3]))
+            return fieldName[3..];
+
+        return fieldName;
+    }
+
+    public static string CleanUnderscore(string fieldName) => fieldName.Replace("_", "");
 
     public static Architecture DetectArchitecture(string gameAssemblyPath)
     {
@@ -105,13 +115,7 @@ internal static class TypeHelper
     public static FlatTable TypeToTable(ParserOptionsContext context, ITypeParser typeParser, TypeDef targetType)
     {
         var typeName = targetType.Name.String ?? string.Empty;
-        var ret = new FlatTable(typeName, targetType.Namespace.String ?? string.Empty)
-        {
-            HasEncryption = targetType.Fields.Any(f =>
-                f.IsPublic && f.IsStatic &&
-                f.Name == "TableKey" &&
-                f.FieldType.FullName == "System.Byte[]")
-        };
+        var ret = new FlatTable(typeName, targetType.Namespace.String ?? string.Empty);
 
         var createMethod = targetType.Methods.FirstOrDefault(m =>
             m.Name == $"Create{typeName}" &&
@@ -123,23 +127,32 @@ internal static class TypeHelper
         if (context.NoAsmProcessing)
         {
             if (createMethod == null)
-                return context.Force
+            {
+                var result = context.Force
                     ? ProcessWithForceMethod(ref ret, targetType)
                     : ProcessWithoutCreateMethod(ret, targetType);
+                return result;
+            }
 
             FieldParser.ForceProcessFields(context, ref ret, createMethod, targetType);
+            ApplyCreateNames(ret, createMethod);
             return ret;
         }
 
         if (createMethod == null)
-            return ProcessWithoutCreateMethod(ret, targetType);
+        {
+            var result = ProcessWithoutCreateMethod(ret, targetType);
+            return result;
+        }
 
         typeParser.ProcessFields(context, ref ret, createMethod, targetType);
+        ApplyCreateNames(ret, createMethod);
         return ret;
     }
 
     private static FlatTable ProcessWithForceMethod(ref FlatTable ret, TypeDef targetType)
     {
+        ret.NoCreate = true;
         FieldParser.ProcessFieldsByMethods(ref ret, targetType);
         return ret;
     }
@@ -151,7 +164,34 @@ internal static class TypeHelper
         return ret;
     }
 
-    public static FlatEnum TypeToEnum(TypeDef typeDef)
+    private static void ApplyCreateNames(FlatTable table, MethodDef createMethod)
+    {
+        var fieldCount = Math.Min(table.Fields.Count, createMethod.Parameters.Count - 1);
+
+        for (var i = 0; i < fieldCount; i++)
+            table.Fields[i].Name = GetName(createMethod.Parameters[i + 1]);
+    }
+
+    private static string GetName(Parameter parameter)
+    {
+        var name = UTF8String.ToSystemString(parameter.Name);
+        return name.EndsWith("Offset", StringComparison.Ordinal) && IsOffset(parameter.Type)
+            ? name[..^"Offset".Length]
+            : name;
+    }
+
+    private static bool IsOffset(TypeSig typeSig)
+    {
+        var fullName = typeSig.ToTypeDefOrRef()?.FullName;
+        if (string.IsNullOrEmpty(fullName))
+            return false;
+
+        return string.Equals(fullName, "FlatBuffers.StringOffset", StringComparison.Ordinal) ||
+               fullName.StartsWith("FlatBuffers.VectorOffset", StringComparison.Ordinal) ||
+               fullName.StartsWith("FlatBuffers.Offset", StringComparison.Ordinal);
+    }
+
+    public static FlatEnum TypeToEnum(ParserOptionsContext context, TypeDef typeDef)
     {
         var retType = FlatTypeInfo.FromTypeSig(typeDef.GetEnumUnderlyingType());
         var ret = new FlatEnum(retType, typeDef.Name.String ?? string.Empty, typeDef.Namespace.String ?? string.Empty);
@@ -183,7 +223,7 @@ internal static class TypeHelper
                long.TryParse(targetDecimal, NumberStyles.Integer, null, out result);
     }
 
-    public static List<InstructionsAnalyzer.CallInfo> GetAnalyzedCalls(ParserOptionsContext context,
+    internal static List<InstructionsAnalyzer.CallInfo> GetAnalyzedCalls(ParserOptionsContext context,
         MethodDef createMethod)
     {
         var instructions = context.InstructionsParser.GetInstructions(createMethod);

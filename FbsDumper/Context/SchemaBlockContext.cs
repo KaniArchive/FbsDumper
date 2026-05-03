@@ -1,9 +1,8 @@
 using FbsDumper.Assembly;
-using FbsDumper.Context;
 
-namespace FbsDumper.Services;
+namespace FbsDumper.Context;
 
-internal readonly record struct SchemaBlock(
+public readonly record struct SchemaBlockContext(
     NamespaceContext Namespace,
     IReadOnlyList<FlatTable> Tables,
     IReadOnlyList<FlatEnum> Enums)

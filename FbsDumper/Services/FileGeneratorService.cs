@@ -10,6 +10,7 @@ public static class FileGeneratorService
         SchemaGeneratorServiceBase generator = generation.IsSplitMode
             ? new SplitGeneratorService(generation)
             : new SingleGeneratorService(generation);
+
         generator.Generate(schema);
     }
 

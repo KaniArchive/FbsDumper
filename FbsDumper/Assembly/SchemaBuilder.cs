@@ -109,7 +109,7 @@ public static class SchemaBuilder
         }
 
         Log.Info("Adding enums...");
-        foreach (var fEnum in context.FlatEnumsToAdd.AsValueEnumerable().Select(TypeHelper.TypeToEnum))
+        foreach (var fEnum in context.FlatEnumsToAdd.AsValueEnumerable().Select(t => TypeHelper.TypeToEnum(context, t)))
             schema.FlatEnums.Add(fEnum);
 
         if (context.SkipDuplicates)

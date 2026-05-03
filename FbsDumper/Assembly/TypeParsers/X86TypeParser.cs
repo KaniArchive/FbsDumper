@@ -7,12 +7,12 @@ using ZLinq;
 
 namespace FbsDumper.Assembly.TypeParsers;
 
-internal class X86TypeParser : FieldParser
+public class X86TypeParser : FieldParser
 {
     public override void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
         TypeDef targetType)
     {
-        Dictionary<int, (Parameter param, MethodDef method)> dict;
+        Dictionary<int, Parameter> dict;
 
         try
         {
@@ -26,14 +26,14 @@ internal class X86TypeParser : FieldParser
 
         dict = dict.AsValueEnumerable().OrderBy(t => t.Key).ToDictionary();
 
-        foreach (var (key, (param, method)) in dict)
-            AddField(context, ref ret, targetType, key, param, method.Name.String);
+        foreach (var (key, param) in dict)
+            AddField(context, ref ret, targetType, key, param);
     }
 
-    private static Dictionary<int, (Parameter param, MethodDef method)> ParseCallsForCreateMethod(
+    private static Dictionary<int, Parameter> ParseCallsForCreateMethod(
         ParserOptionsContext context, MethodDef createMethod, TypeDef targetType)
     {
-        Dictionary<int, (Parameter, MethodDef)> ret = [];
+        Dictionary<int, Parameter> ret = [];
         Dictionary<long, MethodDef> typeMethods = [];
         HashSet<int> seenParameterIndices = [];
 
@@ -115,8 +115,7 @@ internal class X86TypeParser : FieldParser
                         continue;
                     }
 
-                    // Store both the parameter and the resolved Add* method for name extraction
-                    ret.Add(fieldIndex, (parameter, resolvedMethod));
+                    ret.Add(fieldIndex, parameter);
                     seenParameterIndices.Add(paramIndex);
                     fieldIndex++;
                     cur += 1;
