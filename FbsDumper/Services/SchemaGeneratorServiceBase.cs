@@ -51,21 +51,6 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         File.WriteAllBytes(outputPath, buffer.ToArray());
     }
 
-    protected virtual string ResolveFieldType(string typeName, FieldWriteContext field)
-    {
-        if (!field.File.QualifyTypes || !field.Schema.Lookup.HasType(typeName))
-            return typeName;
-
-        var typeNs = field.Field.Type.Namespace;
-        if (typeNs == field.Table.OriginalNamespace)
-            return typeName;
-
-        var ns = NamespaceContext.Build(typeNs, Generation.CustomNamespace);
-        return string.IsNullOrEmpty(ns.FinalNamespace)
-            ? typeName
-            : $"{ns.FinalNamespace}.{typeName}";
-    }
-
     private protected static FileWriteContext CreateFile(string outputPath, SchemaBlockContext block,
         IReadOnlyList<string> includes, bool qualifyTypes) =>
         new(outputPath, block.Namespace, block.Tables, block.Enums, includes, qualifyTypes);
@@ -200,7 +185,6 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
     protected string GetFieldType(FieldWriteContext field)
     {
         var type = TypeHelper.SystemToStringType(field.Field.Type);
-        type = ResolveFieldType(type, field);
 
         if (field.Field.IsArray)
             type = $"[{type}]";
