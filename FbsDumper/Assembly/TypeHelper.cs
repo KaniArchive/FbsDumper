@@ -197,7 +197,7 @@ public static class TypeHelper
     private static bool HasEncryptedFieldPattern(MethodDef createMethod, string fieldName) =>
         createMethod.DeclaringType.Methods.Any(m =>
             m.IsPublic && m.IsStatic &&
-            string.Equals(m.Name.String, $"Add{fieldName}", StringComparison.Ordinal));
+            string.Equals(m.Name.String, $"Add{fieldName}", StringComparison.OrdinalIgnoreCase));
 
     private static bool IsEncryptableField(FlatField field) =>
         field.Type.FullName != "System.Boolean";
