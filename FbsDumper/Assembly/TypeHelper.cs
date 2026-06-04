@@ -160,7 +160,17 @@ public static class TypeHelper
     {
         ret.NoCreate = true;
         FieldParser.ProcessFieldsByMethods(ref ret, targetType);
+        ApplyForceEncryption(ret);
         return ret;
+    }
+
+    private static void ApplyForceEncryption(FlatTable table)
+    {
+        if (!table.HasEncryption)
+            return;
+
+        foreach (var field in table.Fields)
+            field.HasEncryption = IsEncryptableField(field);
     }
 
     private static FlatTable ProcessWithoutCreateMethod(FlatTable ret, TypeDef targetType)
