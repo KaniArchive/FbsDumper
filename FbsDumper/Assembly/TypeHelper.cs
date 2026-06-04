@@ -175,8 +175,22 @@ public static class TypeHelper
         var fieldCount = Math.Min(table.Fields.Count, createMethod.Parameters.Count - 1);
 
         for (var i = 0; i < fieldCount; i++)
-            table.Fields[i].Name = GetName(createMethod.Parameters[i + 1]);
+        {
+            var field = table.Fields[i];
+            field.Name = GetName(createMethod.Parameters[i + 1]);
+            field.HasEncryption = table.HasEncryption &&
+                                  HasEncryptedFieldPattern(createMethod, field.Name) &&
+                                  IsEncryptableField(field);
+        }
     }
+
+    private static bool HasEncryptedFieldPattern(MethodDef createMethod, string fieldName) =>
+        createMethod.DeclaringType.Methods.Any(m =>
+            m.IsPublic && m.IsStatic &&
+            string.Equals(m.Name.String, $"Add{fieldName}", StringComparison.Ordinal));
+
+    private static bool IsEncryptableField(FlatField field) =>
+        field.Type.FullName != "System.Boolean";
 
     private static string GetName(Parameter parameter)
     {

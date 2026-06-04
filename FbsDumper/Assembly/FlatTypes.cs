@@ -23,6 +23,7 @@ public class FlatField(FlatTypeInfo type, string name, bool isArray = false)
     public bool IsArray = isArray;
     public string Name = name;
     public int Offset;
+    public bool HasEncryption = false;
 
     [JsonIgnore] public FlatTypeInfo Type = type;
 }

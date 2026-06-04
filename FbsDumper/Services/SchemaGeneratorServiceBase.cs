@@ -177,8 +177,21 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
     {
         var name = GetFieldName(field);
         var type = GetFieldType(field);
+        var modifiers = GetFieldModifiers(field);
+        var modifierText = modifiers.Count > 0
+            ? $" ({string.Join(", ", modifiers)})"
+            : string.Empty;
 
-        writer.AppendFormat($"\t{name}: {type}; // index 0x{field.Field.Offset:X}\n");
+        writer.AppendFormat($"\t{name}: {type}{modifierText}; // index 0x{field.Field.Offset:X}\n");
+    }
+
+    protected virtual List<string> GetFieldModifiers(FieldWriteContext field)
+    {
+        var modifiers = new List<string>(1);
+        if (field.Field.HasEncryption)
+            modifiers.Add("encrypted");
+
+        return modifiers;
     }
 
     protected string GetFieldName(FieldWriteContext field) =>
