@@ -50,7 +50,7 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Publish
-        run: dotnet publish FbsDumper.CLI/FbsDumper.CLI.csproj -c Debug -r ${{ matrix.config.runtime }} -o ./publish/${{ matrix.config.runtime }}
+        run: dotnet publish FbsDumper.CLI/FbsDumper.CLI.csproj -c Debug -r ${{ matrix.rid }} -o ./publish/${{ matrix.rid }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
