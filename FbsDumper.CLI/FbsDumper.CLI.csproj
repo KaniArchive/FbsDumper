@@ -9,7 +9,7 @@
         <PublishAot>true</PublishAot>
 
         <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
-        <NoWarn>$(NoWarn);IL2104;IL3053</NoWarn>
+        <NoWarn>$(NoWarn);IL2104;IL3002;IL3053</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
