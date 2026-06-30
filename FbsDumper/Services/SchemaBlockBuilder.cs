@@ -4,15 +4,15 @@ using ZLinq;
 
 namespace FbsDumper.Services;
 
-internal sealed class SchemaBlockBuilder(FileGenerationContext gen)
+public sealed class SchemaBlockBuilder(FileGenerationContext gen)
 {
-    public List<SchemaBlock> Build(SchemaWriteContext schema)
+    public List<SchemaBlockContext> Build(SchemaWriteContext schema)
     {
         var namespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var ns in schema.Schema.FlatTables.AsValueEnumerable().Select(t => t.OriginalNamespace))
             namespaces.Add(ns);
-        
+
         if (gen.EnumOut == EnumOut.Inline)
             foreach (var ns in schema.Schema.FlatEnums.AsValueEnumerable().Select(e => e.OriginalNamespace))
                 namespaces.Add(ns);
@@ -20,7 +20,7 @@ internal sealed class SchemaBlockBuilder(FileGenerationContext gen)
         return Build(schema, [.. namespaces], gen.EnumOut == EnumOut.Inline);
     }
 
-    public List<SchemaBlock> BuildEnums(SchemaWriteContext schema)
+    public List<SchemaBlockContext> BuildEnums(SchemaWriteContext schema)
     {
         var namespaces = schema.Schema.FlatEnums
             .AsValueEnumerable()
@@ -31,11 +31,11 @@ internal sealed class SchemaBlockBuilder(FileGenerationContext gen)
         return Build(schema, namespaces, false);
     }
 
-    private List<SchemaBlock> Build(SchemaWriteContext schema, string[] namespaces, bool inlineEnums) =>
+    private List<SchemaBlockContext> Build(SchemaWriteContext schema, string[] namespaces, bool inlineEnums) =>
         namespaces
             .AsValueEnumerable()
             .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .Select(ns => new SchemaBlock(
+            .Select(ns => new SchemaBlockContext(
                 NamespaceContext.Build(ns, gen.CustomNamespace),
                 schema.Schema.FlatTables
                     .AsValueEnumerable()

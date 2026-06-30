@@ -66,10 +66,11 @@ dotnet build
 - `-v, --verbose`: Enable verbose debug logging
 - `-sw, --suppress-warnings`: Suppress warning messages
 
+
 > [!IMPORTANT]
 > **Disclaimer:** This software is made solely for educational purposes. I do not claim any responsibility for any usage
 > of this software.
 
 ## License
 
-`FBSDumper` is under **GPL v3**. See [LICENSE](LICENSE) for copyright and license details.
+`FbsDumper` is under **GPL v3**. See [LICENSE](LICENSE) for copyright and license details.

@@ -51,7 +51,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         File.WriteAllBytes(outputPath, buffer.ToArray());
     }
 
-    protected string ResolveFieldType(string typeName, FieldWriteContext field)
+    protected virtual string ResolveFieldType(string typeName, FieldWriteContext field)
     {
         if (!field.File.QualifyTypes || !field.Schema.Lookup.HasType(typeName))
             return typeName;
@@ -66,7 +66,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
             : $"{ns.FinalNamespace}.{typeName}";
     }
 
-    private protected static FileWriteContext CreateFile(string outputPath, SchemaBlock block,
+    private protected static FileWriteContext CreateFile(string outputPath, SchemaBlockContext block,
         IReadOnlyList<string> includes, bool qualifyTypes) =>
         new(outputPath, block.Namespace, block.Tables, block.Enums, includes, qualifyTypes);
 
@@ -87,19 +87,11 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
             return;
 
         var filePath = GetSeparateEnumsPath();
+        var schemaBlock = new SchemaBlockContext(NamespaceContext.Build(string.Empty, Generation.CustomNamespace), [], schema.Schema.FlatEnums);
+
         IReadOnlyList<FileWriteContext> files = schema.Lookup.HasDuplicates
-            ? [.. Blocks.BuildEnums(schema).AsValueEnumerable().Select(block => CreateFile(filePath, block, [], false))]
-            :
-            [
-                CreateFile(
-                    filePath,
-                    new SchemaBlock(
-                        NamespaceContext.Build(string.Empty, Generation.CustomNamespace),
-                        [],
-                        schema.Schema.FlatEnums),
-                    [],
-                    false)
-            ];
+            ? [CreateFile(filePath, schemaBlock, [], false)]
+            : [.. Blocks.BuildEnums(schema).AsValueEnumerable().Select(block => CreateFile(filePath, block, [], false))];
 
         WriteSchemaFile(filePath, files, [], schema);
 
@@ -107,7 +99,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
             Log.Info($"Written: {Path.GetFileName(filePath)}");
     }
 
-    private static void WriteIncludes<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
+    protected virtual void WriteIncludes<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
         IReadOnlyList<string> includes)
         where TBufferWriter : IBufferWriter<byte>
     {
@@ -118,7 +110,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
             writer.AppendLine();
     }
 
-    private void WriteSchema<TBufferWriter>(
+    protected virtual void WriteSchema<TBufferWriter>(
         ref Utf8StringWriter<TBufferWriter> writer,
         FileWriteContext file,
         SchemaWriteContext schema)
@@ -140,13 +132,14 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         }
     }
 
-    private void WriteTable<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatTable table,
+    protected virtual void WriteTable<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatTable table,
         FileWriteContext file, SchemaWriteContext schema)
         where TBufferWriter : IBufferWriter<byte>
     {
         writer.AppendFormat($"table {table.TableName} {{\n");
 
-        if (table.NoCreate) writer.AppendLiteral("\t// No Create method\n");
+        if (table.NoCreate && table.Fields.Count == 0)
+            writer.AppendLiteral("\t// No Create method\n");
 
         foreach (var field in table.Fields)
             WriteField(ref writer, new FieldWriteContext(field, table, file, schema));
@@ -154,7 +147,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         writer.AppendLiteral("}\n");
     }
 
-    private static void WriteEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatEnum fEnum)
+    protected virtual void WriteEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FlatEnum fEnum)
         where TBufferWriter : IBufferWriter<byte>
     {
         var enumTypeName = TypeHelper.SystemToStringType(fEnum.Type);
@@ -173,12 +166,23 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
     protected virtual void WriteField<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, FieldWriteContext field)
         where TBufferWriter : IBufferWriter<byte>
     {
-        var name = Generation.ForceSnakeCase ? field.Field.Name.ToSnakeCase() : field.Field.Name;
+        var name = GetFieldName(field);
+        var type = GetFieldType(field);
+
+        writer.AppendFormat($"\t{name}: {type}; // index 0x{field.Field.Offset:X}\n");
+    }
+
+    protected string GetFieldName(FieldWriteContext field) =>
+        Generation.ForceSnakeCase ? field.Field.Name.ToSnakeCase() : field.Field.Name;
+
+    protected string GetFieldType(FieldWriteContext field)
+    {
         var type = TypeHelper.SystemToStringType(field.Field.Type);
         type = ResolveFieldType(type, field);
 
-        if (field.Field.IsArray) type = $"[{type}]";
+        if (field.Field.IsArray)
+            type = $"[{type}]";
 
-        writer.AppendFormat($"\t{name}: {type}; // index 0x{field.Field.Offset:X}\n");
+        return type;
     }
 }

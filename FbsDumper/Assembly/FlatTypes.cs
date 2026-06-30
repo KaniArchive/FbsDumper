@@ -11,10 +11,10 @@ public class FlatSchema
 public class FlatTable(string tableName, string originalNamespace = "")
 {
     public readonly List<FlatField> Fields = [];
-    public readonly string TableName = tableName;
     public readonly string OriginalNamespace = originalNamespace;
+    public readonly string TableName = tableName;
     public bool NoCreate = false;
-    public bool HasEncryption = false;
+    public Dictionary<string, object> Metadata { get; } = [];
 }
 
 public class FlatField(FlatTypeInfo type, string name, bool isArray = false)

@@ -5,7 +5,7 @@ using ZLinq;
 
 namespace FbsDumper.Services;
 
-public sealed class SplitGeneratorService(FileGenerationContext generation) : SchemaGeneratorServiceBase(generation)
+public class SplitGeneratorService(FileGenerationContext generation) : SchemaGeneratorServiceBase(generation)
 {
     protected override void PrepareOutput()
     {

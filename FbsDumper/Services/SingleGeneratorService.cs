@@ -4,7 +4,7 @@ using ZLinq;
 
 namespace FbsDumper.Services;
 
-public sealed class SingleGeneratorService(FileGenerationContext generation) : SchemaGeneratorServiceBase(generation)
+public class SingleGeneratorService(FileGenerationContext generation) : SchemaGeneratorServiceBase(generation)
 {
     private string OutputPath =>
         Directory.Exists(Generation.OutputPath)
@@ -15,7 +15,7 @@ public sealed class SingleGeneratorService(FileGenerationContext generation) : S
 
     protected override void GenerateCore(SchemaWriteContext schema)
     {
-        if (!schema.Lookup.HasDuplicates)
+        if (Generation.SkipDuplicates)
         {
             WriteSchemaFile(BuildFile(schema), schema);
             return;
@@ -44,7 +44,7 @@ public sealed class SingleGeneratorService(FileGenerationContext generation) : S
 
         return CreateFile(
             OutputPath,
-            new SchemaBlock(
+            new SchemaBlockContext(
                 ns,
                 schema.Schema.FlatTables,
                 enums),

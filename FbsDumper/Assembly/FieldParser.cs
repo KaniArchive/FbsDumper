@@ -4,24 +4,22 @@ using ZLinq;
 
 namespace FbsDumper.Assembly;
 
-internal abstract class FieldParser : ITypeParser
+public abstract class FieldParser : ITypeParser
 {
     public abstract void ProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
         TypeDef targetType);
 
     protected static void AddField(ParserOptionsContext context, ref FlatTable ret, TypeDef targetType, int offset,
-        Parameter param, string? addMethodName = null)
+        Parameter param)
     {
         var fieldType = TypeHelper.ResolveTypeDef(param.Type);
         var fieldTypeSig = param.Type;
 
-        var fieldName = addMethodName != null && addMethodName.StartsWith("Add", StringComparison.Ordinal)
-            ? addMethodName[3..]
-            : UTF8String.ToSystemString(param.Name);
+        var fieldName = UTF8String.ToSystemString(param.Name);
 
         fieldTypeSig = ExtractGeneric(fieldTypeSig, ref fieldType);
 
-        FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), TypeHelper.CleanFieldName(fieldName))
+        FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), fieldName)
         {
             Offset = offset
         };
@@ -33,7 +31,7 @@ internal abstract class FieldParser : ITypeParser
         ret.Fields.Add(field);
     }
 
-    internal static TypeDef ProcessOffsets(TypeDef targetType, TypeDef fieldType,
+    public static TypeDef ProcessOffsets(TypeDef targetType, TypeDef fieldType,
         FlatField field, string fieldName, ref TypeSig fieldTypeSig)
     {
         switch (fieldType.FullName)
@@ -74,7 +72,7 @@ internal abstract class FieldParser : ITypeParser
         return fieldType;
     }
 
-    internal static TypeSig ProcessOffsetsByMethods(TypeDef targetType, TypeDef fieldType, FlatField field,
+    public static TypeSig ProcessOffsetsByMethods(TypeDef targetType, TypeDef fieldType, FlatField field,
         string fieldName, TypeSig fieldTypeSig, MethodDef method)
     {
         switch (fieldType.FullName)
@@ -97,7 +95,7 @@ internal abstract class FieldParser : ITypeParser
                     fieldTypeSig = fieldType.ToTypeSig();
 
                 field.Type = TypeHelper.ToFlatTypeInfo(fieldType);
-                field.Name = method.Name;
+                field.Name = TypeHelper.TrimAddPrefix(method.Name);
 
                 break;
         }
@@ -105,7 +103,7 @@ internal abstract class FieldParser : ITypeParser
         return fieldTypeSig;
     }
 
-    internal static void ForceProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
+    public static void ForceProcessFields(ParserOptionsContext context, ref FlatTable ret, MethodDef createMethod,
         TypeDef targetType)
     {
         foreach (var (param, offset) in createMethod.Parameters.AsValueEnumerable().Skip(1)
@@ -113,20 +111,11 @@ internal abstract class FieldParser : ITypeParser
         {
             var fieldType = TypeHelper.ResolveTypeDef(param.Type);
             var fieldTypeSig = param.Type;
-
-            var addMethod = targetType.Methods.FirstOrDefault(m =>
-                m.IsPublic && m.IsStatic &&
-                m.Name.String.StartsWith("Add", StringComparison.Ordinal) &&
-                m.Parameters.Count == 2 &&
-                m.Parameters[1].Name == param.Name);
-
-            var fieldName = addMethod != null
-                ? addMethod.Name.String[3..]
-                : UTF8String.ToSystemString(param.Name);
+            var fieldName = UTF8String.ToSystemString(param.Name);
 
             fieldTypeSig = ExtractGeneric(fieldTypeSig, ref fieldType);
 
-            FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), TypeHelper.CleanFieldName(fieldName))
+            FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), fieldName)
             {
                 Offset = offset
             };
@@ -140,7 +129,7 @@ internal abstract class FieldParser : ITypeParser
         }
     }
 
-    internal static void ProcessFieldsByMethods(ref FlatTable ret, TypeDef targetType)
+    public static void ProcessFieldsByMethods(ref FlatTable ret, TypeDef targetType)
     {
         foreach (var method in targetType.Methods.Where(m =>
                      m.IsPublic && m.IsStatic && m.Name.StartsWith("Add", StringComparison.Ordinal) &&
@@ -151,9 +140,7 @@ internal abstract class FieldParser : ITypeParser
             var fieldType = TypeHelper.ResolveTypeDef(param.Type);
             var fieldTypeSig = param.Type;
 
-            var fieldName = method.Name.String.StartsWith("Add", StringComparison.Ordinal)
-                ? method.Name.String[3..]
-                : UTF8String.ToSystemString(param.Name);
+            var fieldName = TypeHelper.TrimAddPrefix(method.Name.String);
 
             fieldTypeSig = ExtractGeneric(fieldTypeSig, ref fieldType);
             FlatField field = new(TypeHelper.ToFlatTypeInfo(fieldType), fieldName);
@@ -166,7 +153,7 @@ internal abstract class FieldParser : ITypeParser
         }
     }
 
-    internal static TypeSig ExtractGeneric(TypeSig fieldTypeSig, ref TypeDef fieldType)
+    public static TypeSig ExtractGeneric(TypeSig fieldTypeSig, ref TypeDef fieldType)
     {
         if (fieldTypeSig is not GenericInstSig genericInstance) return fieldTypeSig;
         fieldType = TypeHelper.ResolveTypeDef(genericInstance.GenericArguments.First());
@@ -175,7 +162,7 @@ internal abstract class FieldParser : ITypeParser
         return fieldTypeSig;
     }
 
-    internal static TypeDef SetGeneric(TypeSig fieldTypeSig, TypeDef fieldType, FlatField field)
+    public static TypeDef SetGeneric(TypeSig fieldTypeSig, TypeDef fieldType, FlatField field)
     {
         if (!fieldTypeSig.IsGenericInstanceType) return fieldType;
 
@@ -186,7 +173,7 @@ internal abstract class FieldParser : ITypeParser
         return fieldType;
     }
 
-    internal static void SaveEnum(ParserOptionsContext context, FlatField field, TypeDef fieldType)
+    public static void SaveEnum(ParserOptionsContext context, FlatField field, TypeDef fieldType)
     {
         if (field.Type.IsEnum && !context.FlatEnumsToAdd.Contains(fieldType))
             context.FlatEnumsToAdd.Add(fieldType);
@@ -232,12 +219,12 @@ internal abstract class FieldParser : ITypeParser
 
     private static string[] GetNames(string fieldName)
     {
-        var originalName = TypeHelper.CleanFieldName(fieldName);
+        var originalName = TypeHelper.CleanUnderscore(fieldName);
 
         if (!fieldName.EndsWith("Offset", StringComparison.Ordinal))
             return [originalName];
 
-        var strippedName = TypeHelper.CleanFieldName(new string([.. fieldName.SkipLast("Offset".Length)]));
+        var strippedName = TypeHelper.CleanUnderscore(new string([.. fieldName.SkipLast("Offset".Length)]));
         return string.Equals(strippedName, originalName, StringComparison.Ordinal)
             ? [originalName]
             : [strippedName, originalName];
