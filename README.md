@@ -62,6 +62,7 @@ dotnet build
 - `-s, --force-snake-case`: Force snake case conversion
 - `-nl, --namespace-to-look-for`: Specifies the namespace to look for
 - `-f, --force`: Force processing using Add methods when no Create method exists
+- `-st, --shorten-types`: Force short type names instead of namespace-qualified type names
 - `-sd, --skip-duplicates`:  Keep only the first occurrence of duplicate short names
 - `-v, --verbose`: Enable verbose debug logging
 - `-sw, --suppress-warnings`: Suppress warning messages

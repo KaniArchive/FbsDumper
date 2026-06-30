@@ -14,6 +14,7 @@ public sealed class ParserOptionsContext(
     EnumOut enumOut,
     bool forceSnakeCase,
     bool force,
+    bool shortenTypes,
     bool skipDuplicates,
     bool verbose,
     bool suppressWarnings)
@@ -27,6 +28,7 @@ public sealed class ParserOptionsContext(
     public EnumOut EnumOut { get; } = enumOut;
     public bool ForceSnakeCase { get; } = forceSnakeCase;
     public bool Force { get; } = force;
+    public bool ShortenTypes { get; } = shortenTypes;
     public bool SkipDuplicates { get; } = skipDuplicates;
     public bool Verbose { get; } = verbose;
     public bool SuppressWarnings { get; } = suppressWarnings;
