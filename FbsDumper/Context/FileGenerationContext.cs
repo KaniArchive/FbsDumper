@@ -7,6 +7,7 @@ public readonly record struct FileGenerationContext(
     string? CustomNamespace,
     EnumOut EnumOut,
     bool ForceSnakeCase,
+    bool ShortenTypes,
     bool IsSplitMode,
     bool SkipDuplicates
 );

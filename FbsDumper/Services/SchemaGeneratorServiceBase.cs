@@ -53,7 +53,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
 
     protected virtual string ResolveFieldType(string typeName, FieldWriteContext field)
     {
-        if (!field.File.QualifyTypes || !field.Schema.Lookup.HasType(typeName))
+        if (Generation.ShortenTypes || !field.File.QualifyTypes || !field.Schema.Lookup.HasType(typeName))
             return typeName;
 
         var typeNs = field.Field.Type.Namespace;
