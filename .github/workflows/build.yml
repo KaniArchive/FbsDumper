@@ -6,39 +6,29 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Build in Release'
+        type: boolean
+        default: false
 
 jobs:
   build:
-    name: Build for ${{ matrix.os }} (${{ matrix.arch }})
-    runs-on: ${{ matrix.runner }}
-    
+    name: Build for ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+
     strategy:
       matrix:
-        include:
-          - os: windows
-            arch: x86_64
-            runner: windows-latest
-            rid: win-x64
-          - os: windows
-            arch: aarch64
-            runner: windows-latest
-            rid: win-arm64
-          - os: macos
-            arch: x86_64
-            runner: macos-15
-            rid: osx-x64
-          - os: macos
-            arch: aarch64
-            runner: macos-15
-            rid: osx-arm64
-          - os: linux
-            arch: x86_64
-            runner: ubuntu-latest
-            rid: linux-x64
-          - os: linux
-            arch: aarch64
-            runner: ubuntu-24.04-arm
-            rid: linux-arm64
+        config:
+          - { name: linux-x86_64, os: ubuntu-latest, rid: linux-x64 }
+          - { name: linux-aarch64, os: ubuntu-24.04-arm, rid: linux-arm64 }
+          - { name: windows-x86_64, os: windows-latest, rid: win-x64 }
+          - { name: windows-aarch64, os: windows-latest, rid: win-arm64 }
+          - { name: macos-x86_64, os: macos-15, rid: osx-x64 }
+          - { name: macos-aarch64, os: macos-15, rid: osx-arm64 }
+
+    env:
+      BUILD_CONFIG: ${{ (github.event_name == 'workflow_dispatch' && inputs.release) && 'Release' || 'Debug' }}
 
     steps:
       - name: Checkout code
@@ -50,10 +40,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Publish
-        run: dotnet publish FbsDumper.CLI/FbsDumper.CLI.csproj -c Debug -r ${{ matrix.config.runtime }} -o ./publish/${{ matrix.config.runtime }}
+        run: dotnet publish FbsDumper.CLI/FbsDumper.CLI.csproj -c ${{ env.BUILD_CONFIG }} -r ${{ matrix.config.rid }} -o ./publish/${{ matrix.config.rid }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.repository.name }}-${{ matrix.rid }}
-          path: publish/${{ matrix.rid }}
+          name: ${{ github.event.repository.name }}-${{ matrix.config.rid }}
+          path: publish/${{ matrix.config.rid }}
