@@ -1,0 +1,71 @@
+<Project>
+  <PropertyGroup>
+    <CopyOutputSymbolsToPublishDirectory Condition="'$(CopyOutputSymbolsToPublishDirectory)' == ''">true</CopyOutputSymbolsToPublishDirectory>
+  </PropertyGroup>
+
+  <Target Name="RenamePublishOutputToExeName"
+          AfterTargets="Publish"
+          DependsOnTargets="Publish;CopyNativeBinary;_CopyAotSymbols"
+          Condition="'$(OutputExeName)' != '' AND '$(OutputExeName)' != '$(TargetName)'">
+
+    <ItemGroup>
+      <_RenameCandidates Include="$(PublishDir)$(TargetName)" />
+      <_RenameCandidates Include="$(PublishDir)$(TargetName).*" />
+    </ItemGroup>
+
+    <RenamePublishedFiles
+      Files="@(_RenameCandidates)"
+      OldName="$(TargetName)"
+      NewName="$(OutputExeName)" />
+
+  </Target>
+
+  <UsingTask TaskName="RenamePublishedFiles" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <OldName ParameterType="System.String" Required="true" />
+      <NewName ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+foreach (var item in Files)
+{
+    string path = item.ItemSpec;
+    if (!File.Exists(path))
+    {
+        continue;
+    }
+
+    string dir = Path.GetDirectoryName(path);
+    string fileName = Path.GetFileName(path);
+
+    if (!fileName.StartsWith(OldName, StringComparison.Ordinal))
+    {
+        continue;
+    }
+
+    string suffix = fileName.Substring(OldName.Length);
+    string newFileName = NewName + suffix;
+    string destPath = Path.Combine(dir, newFileName);
+
+    if (string.Equals(path, destPath, StringComparison.Ordinal))
+    {
+        continue;
+    }
+
+    if (File.Exists(destPath))
+    {
+        File.Delete(destPath);
+    }
+
+    File.Move(path, destPath);
+    Log.LogMessage(MessageImportance.High, $"Renamed publish output: {fileName} -> {newFileName}");
+}
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+</Project>

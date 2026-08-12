@@ -1,14 +1,12 @@
-name: Build
+name: Build and Release
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
-      release:
-        description: 'Build in Release'
+      release-tag:
+        required: false
+        default: ''
+      debug:
         type: boolean
         default: false
 
@@ -23,27 +21,55 @@ jobs:
           - { name: linux-x86_64, os: ubuntu-latest, rid: linux-x64 }
           - { name: linux-aarch64, os: ubuntu-24.04-arm, rid: linux-arm64 }
           - { name: windows-x86_64, os: windows-latest, rid: win-x64 }
-          - { name: windows-aarch64, os: windows-latest, rid: win-arm64 }
-          - { name: macos-x86_64, os: macos-15, rid: osx-x64 }
-          - { name: macos-aarch64, os: macos-15, rid: osx-arm64 }
+          - { name: windows-aarch64, os: windows-11-vs2026-arm, rid: win-arm64 }
+          - { name: macos-x86_64, os: macos-26-intel, rid: osx-x64 }
+          - { name: macos-aarch64, os: macos-latest, rid: osx-arm64 }
 
     env:
-      BUILD_CONFIG: ${{ (github.event_name == 'workflow_dispatch' && inputs.release) && 'Release' || 'Debug' }}
+      BUILD_CONFIG: ${{ (github.event_name == 'workflow_dispatch' && inputs.debug) && 'Debug' || 'Release' }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
 
       - name: Publish
         run: dotnet publish FbsDumper.CLI/FbsDumper.CLI.csproj -c ${{ env.BUILD_CONFIG }} -r ${{ matrix.config.rid }} -o ./publish/${{ matrix.config.rid }}
 
+      - name: Remove dev files
+        if: env.BUILD_CONFIG == 'Release'
+        shell: bash
+        run: |
+          find ./publish/${{ matrix.config.rid }} -name "*.pdb" -type f -delete
+          find ./publish/${{ matrix.config.rid }} -name "*.dbg" -type f -delete
+          find ./publish/${{ matrix.config.rid }} -name "*.dsym" -type d -exec rm -rf {} +
+
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ github.event.repository.name }}-${{ matrix.config.rid }}
           path: publish/${{ matrix.config.rid }}
+
+      - name: Create Zip Archive
+        if: github.event_name == 'workflow_dispatch' && inputs.release-tag != ''
+        uses: vimtor/action-zip@v1.3
+        with:
+          files: ./publish/${{ matrix.config.rid }}
+          dest: ${{ github.event.repository.name }}-${{ matrix.config.rid }}.zip
+
+      - name: Upload Release Asset
+        if: github.event_name == 'workflow_dispatch' && inputs.release-tag != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          name: ${{ inputs.release-tag }}
+          tag_name: ${{ inputs.release-tag }}
+          files: ${{ github.event.repository.name }}-${{ matrix.config.rid }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+permissions:
+  contents: write
