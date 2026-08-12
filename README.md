@@ -69,9 +69,8 @@ dotnet build
 
 
 > [!IMPORTANT]
-> **Disclaimer:** This software is made solely for educational purposes. I do not claim any responsibility for any usage
-> of this software.
+> **Disclaimer:** This software is made solely for educational purposes. This project do not claim any responsibility for any usage of this software.
 
-## License
+---
 
-`FbsDumper` is under **GPL v3**. See [LICENSE](LICENSE) for copyright and license details.
+<sub>`FbsDumper` is under **GPL v3**. See [LICENSE](LICENSE) for copyright and license details.</sub>
