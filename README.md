@@ -42,7 +42,7 @@ FbsDumper.exe --dummy-dll "path/to/DummyDll" --split --enum-out Separate --outpu
 
 ```sh
 git clone https://github.com/KaniArchive/FbsDumper
-cd FbsDumper
+cd FbsDumper/FbsDumper.CLI
 ```
 
 3. Build using `dotnet`
