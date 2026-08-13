@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
+        <OutputExeName>FbsDumper</OutputExeName>
         <TargetFramework>net10.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -23,16 +24,6 @@
         <ProjectReference Include="..\FbsDumper\FbsDumper.csproj"/>
     </ItemGroup>
 
-    <Target Name="RenameExecutable" AfterTargets="Publish">
-        <PropertyGroup>
-            <ExeExt Condition="'$(OS)' == 'Windows_NT'">.exe</ExeExt>
-            <ExeExt Condition="'$(OS)' != 'Windows_NT'"></ExeExt>
-            <OldExe>$(PublishDir)FbsDumper.CLI$(ExeExt)</OldExe>
-            <NewExe>$(PublishDir)FbsDumper$(ExeExt)</NewExe>
-        </PropertyGroup>
-
-        <Move SourceFiles="$(OldExe)" DestinationFiles="$(NewExe)" OverwriteReadOnlyFiles="true" Condition="Exists('$(OldExe)')"/>
-        <Delete Files="$(OldExe)" Condition="Exists('$(OldExe)')"/>
-    </Target>
+    <Import Project="PublishOutput.targets" />
 
 </Project>

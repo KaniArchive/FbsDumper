@@ -97,15 +97,15 @@ public static class SchemaBuilder
             context.NamespaceToLookFor,
             context.SkipDuplicates);
 
+        Log.Success($"Found {typeDefs.Count} total");
+
         FlatSchema schema = new();
-        var done = 0;
 
         foreach (var typeDef in typeDefs)
         {
-            Log.Global.LogProgress(done + 1, typeDefs.Count);
+            Log.GlobalSuccess.LogDisassembled(typeDef.Name);
             var table = TypeHelper.TypeToTable(context, typeParser, typeDef);
             schema.FlatTables.Add(table);
-            done += 1;
         }
 
         Log.Info("Adding enums...");

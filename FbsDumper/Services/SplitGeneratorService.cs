@@ -24,7 +24,7 @@ public class SplitGeneratorService(FileGenerationContext generation) : SchemaGen
             var file = CreateFile(outputPath, block, includes, true);
 
             WriteSchemaFile(file, context);
-            Log.Info($"Written: {Path.GetFileName(outputPath)}");
+            Log.Success($"Written: {Path.GetFileName(outputPath)}");
         }
     }
 

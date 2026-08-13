@@ -47,7 +47,7 @@ public static class Parser
 
         FileGeneratorService.Write(schema, generation);
 
-        Log.Info("Done.");
+        Log.Success("Done!");
     }
 
     private static bool ValidatePaths(ParserOptionsContext context)
@@ -62,7 +62,7 @@ public static class Parser
 
         if (string.IsNullOrEmpty(context.GameAssemblyPath))
         {
-            Log.Info("No game assembly provided. Skipping assembly analysis.");
+            Log.Warning("No game assembly provided. Skipping assembly analysis.");
             return true;
         }
 
