@@ -96,7 +96,7 @@ public abstract class SchemaGeneratorServiceBase(FileGenerationContext generatio
         WriteSchemaFile(filePath, files, [], schema);
 
         if (Generation.IsSplitMode)
-            Log.Info($"Written: {Path.GetFileName(filePath)}");
+            Log.Success($"Written: {Path.GetFileName(filePath)}");
     }
 
     protected virtual void WriteIncludes<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
